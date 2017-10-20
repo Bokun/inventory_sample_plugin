@@ -1,6 +1,8 @@
 package io.bokun.inventory.plugin.sample;
 
 import java.io.*;
+import java.time.*;
+import java.util.*;
 
 import javax.annotation.*;
 
@@ -8,6 +10,7 @@ import com.google.common.collect.*;
 import com.google.inject.*;
 import com.squareup.okhttp.*;
 import io.bokun.inventory.common.api.grpc.*;
+import io.bokun.inventory.common.api.grpc.Date;
 import io.bokun.inventory.plugin.api.grpc.*;
 import io.bokun.inventory.plugin.api.grpc.PluginConfigurationParameter;
 import io.grpc.stub.*;
@@ -78,6 +81,7 @@ public class SamplePlugin extends PluginApiGrpc.PluginApiImplBase {
      */
     @Override
     public void getDefinition(Empty request, StreamObserver<PluginDefinition> responseObserver) {
+        log.trace("In ::getDefinition");
         responseObserver.onNext(
                 PluginDefinition.newBuilder()
                         .setName("Sample plugin")
@@ -96,6 +100,7 @@ public class SamplePlugin extends PluginApiGrpc.PluginApiImplBase {
                         .build()
         );
         responseObserver.onCompleted();
+        log.trace("Out ::getDefinition");
     }
 
     /**
@@ -146,7 +151,16 @@ public class SamplePlugin extends PluginApiGrpc.PluginApiImplBase {
         // Do something with httpResponseBody, e.g. convert this JSON into POJO and convert that POJO into BasicProductInfo
         // Don't forget to filter them by country and city, based on request parameters.
         BasicProductInfo basicProductInfo = BasicProductInfo.newBuilder()
-                // set properties of BasicProductInfo here
+                .setId("123")
+                .setName("Mock product")
+                .setDescription("Mock product description")
+                .addPricingCategories(
+                        PricingCategory.newBuilder()
+                                .setId("ADT")
+                                .setLabel("Adult")
+                )
+                .addCities("London")
+                .addCountries("GB")
                 .build();
         responseObserver.onNext(basicProductInfo);      // you will likely want to run this in a loop, to return multiple products
         responseObserver.onCompleted();                 // make sure this call is never forgotten as IS will otherwise block waiting endlessly 
@@ -163,7 +177,28 @@ public class SamplePlugin extends PluginApiGrpc.PluginApiImplBase {
 
         // similar to searchProducts except this should return a single product with a bit more information
         ProductDescription productDescription = ProductDescription.newBuilder()
-                // set all properties
+                .setId("123")
+                .setName("Mock product")
+                .setDescription("Mock product description")
+                .addPricingCategories(
+                        PricingCategory.newBuilder()
+                                .setId("ADT")
+                                .setLabel("Adult")
+                )
+                .addRates(
+                        Rate.newBuilder().setId("standard")
+                )
+                .setBookingType(BookingType.DATE_AND_TIME)
+                .setProductCategory(ProductCategory.ACTIVITIES)
+                .addTicketSupport(TicketSupport.TICKET_PER_BOOKING)
+                .addCities("London")
+                .addCountries("GB")
+                .addStartTimes(
+                        Time.newBuilder()
+                                .setHour(8)
+                                .setMinute(15)
+                )
+                .setTicketType(TicketType.QR_CODE)
                 .build();
         responseObserver.onNext(productDescription);
         responseObserver.onCompleted();
@@ -178,7 +213,14 @@ public class SamplePlugin extends PluginApiGrpc.PluginApiImplBase {
      */
     @Override
     public void getAvailableProducts(ProductsAvailabilityRequest request, StreamObserver<ExternalProductId> responseObserver) {
-        // todo implement
+        log.trace("In ::getAvailableProducts");
+        responseObserver.onNext(
+                ExternalProductId.newBuilder()
+                        .setProductId("123")
+                        .build()
+        );
+        responseObserver.onCompleted();
+        log.trace("Out ::getAvailableProducts");
     }
 
     /**
@@ -188,7 +230,42 @@ public class SamplePlugin extends PluginApiGrpc.PluginApiImplBase {
      */
     @Override
     public void getProductAvailability(ProductAvailabilityRequest request, StreamObserver<ProductAvailabilityWithRatesResponse> responseObserver) {
-        // todo implement
+        log.trace("In ::getProductAvailability");
+        LocalDate tomorrow = LocalDate.now().plusDays(1L);
+        responseObserver.onNext(
+                ProductAvailabilityWithRatesResponse.newBuilder()
+                        .setCapacity(10)
+                        .setDate(
+                                Date.newBuilder()
+                                        .setYear(tomorrow.getYear())
+                                        .setMonth(tomorrow.getMonthValue())
+                                        .setDay(tomorrow.getDayOfMonth())
+                        )
+                        .setTime(
+                                Time.newBuilder()
+                                        .setHour(8)
+                                        .setMinute(15)
+                        )
+                        .addRates(
+                                RateWithPrice.newBuilder()
+                                        .setRateId("standard")
+                                        .setPricePerPerson(
+                                                PricePerPerson.newBuilder()
+                                                        .addPricingCategoryWithPrice(
+                                                                PricingCategoryWithPrice.newBuilder()
+                                                                        .setPricingCategoryId("ADT")
+                                                                        .setPrice(
+                                                                                Price.newBuilder()
+                                                                                        .setAmount("100")
+                                                                                        .setCurrency("EUR")
+                                                                        )
+                                                        )
+                                        )
+                        )
+                        .build()
+        );
+        responseObserver.onCompleted();
+        log.trace("Out ::getProductAvailability");
     }
 
     /**
@@ -201,7 +278,17 @@ public class SamplePlugin extends PluginApiGrpc.PluginApiImplBase {
      */
     @Override
     public void createReservation(ReservationRequest request, StreamObserver<ReservationResponse> responseObserver) {
-        // todo maybe implement
+        log.trace("In ::createReservation");
+        responseObserver.onNext(
+                ReservationResponse.newBuilder()
+                        .setSuccessfulReservation(
+                                SuccessfulReservation.newBuilder()
+                                        .setReservationConfirmationCode(UUID.randomUUID().toString())
+                        )
+                        .build()
+        );
+        responseObserver.onCompleted();
+        log.trace("Out ::createReservation");
     }
 
     /**
@@ -213,7 +300,25 @@ public class SamplePlugin extends PluginApiGrpc.PluginApiImplBase {
      */
     @Override
     public void confirmBooking(ConfirmBookingRequest request, StreamObserver<ConfirmBookingResponse> responseObserver) {
-        // todo maybe implement
+        log.trace("In ::confirmBooking");
+        String confirmationCode = UUID.randomUUID().toString();
+        responseObserver.onNext(
+                ConfirmBookingResponse.newBuilder()
+                        .setSuccessfulBooking(
+                                SuccessfulBooking.newBuilder()
+                                        .setBookingConfirmationCode(confirmationCode)
+                                        .setBookingTicket(
+                                                Ticket.newBuilder()
+                                                        .setQrTicket(
+                                                                QrTicket.newBuilder()
+                                                                        .setTicketBarcode(confirmationCode + "_ticket")
+                                                        )
+                                        )
+                        )
+                        .build()
+        );
+        responseObserver.onCompleted();
+        log.trace("Out ::confirmBooking");
     }
 
     /**
@@ -223,7 +328,8 @@ public class SamplePlugin extends PluginApiGrpc.PluginApiImplBase {
      */
     @Override
     public void createAndConfirmBooking(CreateConfirmBookingRequest request, StreamObserver<ConfirmBookingResponse> responseObserver) {
-        // todo maybe implement
+        log.trace("In ::createAndConfirmBooking");          // should never happen
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -233,7 +339,16 @@ public class SamplePlugin extends PluginApiGrpc.PluginApiImplBase {
      */
     @Override
     public void cancelBooking(CancelBookingRequest request, StreamObserver<CancelBookingResponse> responseObserver) {
-        // todo implement
+        log.trace("In ::cancelBooking");
+        responseObserver.onNext(
+                CancelBookingResponse.newBuilder()
+                        .setSuccessfulCancellation(
+                                SuccessfulCancellation.newBuilder()
+                        )
+                        .build()
+        );
+        responseObserver.onCompleted();
+        log.trace("Out ::cancelBooking");
     }
 
     /**
