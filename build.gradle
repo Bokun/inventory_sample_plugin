@@ -1,4 +1,5 @@
 group = 'bokun'
+version '0.2.1'         // should match the one in API and inventory service
 
 buildscript {
     ext {
