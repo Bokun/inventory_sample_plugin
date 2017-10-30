@@ -199,6 +199,7 @@ public class SamplePlugin extends PluginApiGrpc.PluginApiImplBase {
                                 .setMinute(15)
                 )
                 .setTicketType(TicketType.QR_CODE)
+                .setMeetingType(MeetingType.MEET_ON_LOCATION)
                 .build();
         responseObserver.onNext(productDescription);
         responseObserver.onCompleted();
