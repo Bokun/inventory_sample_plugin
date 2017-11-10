@@ -213,11 +213,12 @@ public class SamplePlugin extends PluginApiGrpc.PluginApiImplBase {
      * requested period. Subsequent GetProductAvailability request will clarify precise dates and capacities.
      */
     @Override
-    public void getAvailableProducts(ProductsAvailabilityRequest request, StreamObserver<ExternalProductId> responseObserver) {
+    public void getAvailableProducts(ProductsAvailabilityRequest request, StreamObserver<ProductsAvailabilityResponse> responseObserver) {
         log.trace("In ::getAvailableProducts");
         responseObserver.onNext(
-                ExternalProductId.newBuilder()
+                ProductsAvailabilityResponse.newBuilder()
                         .setProductId("123")
+                        .setActualCheckDone(false)
                         .build()
         );
         responseObserver.onCompleted();

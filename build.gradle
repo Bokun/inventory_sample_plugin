@@ -1,5 +1,5 @@
 group = 'bokun'
-version '0.2.1'         // should match the one in API and inventory service
+version '0.2.2'         // should match the one in API and inventory service
 
 buildscript {
     ext {
@@ -54,10 +54,10 @@ dependencies {
     compile group: 'org.slf4j', name: 'slf4j-log4j12', version:'1.7.25'
     compile group: 'com.google.guava', name: 'guava', version:'23.0'
     compile 'io.grpc:grpc-all:1.2.0'
-    compile('io.bokun.inventory:common-api-grpc:0.2.1-SNAPSHOT') {
+    compile('io.bokun.inventory:common-api-grpc:0.2.2-SNAPSHOT') {
         changing = true
     }
-    compile('io.bokun.inventory:plugin-api-grpc:0.2.1-SNAPSHOT') {
+    compile('io.bokun.inventory:plugin-api-grpc:0.2.2-SNAPSHOT') {
         changing = true
     }
     compile group: 'com.squareup.okhttp', name: 'okhttp', version: '2.7.5'
