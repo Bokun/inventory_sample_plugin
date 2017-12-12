@@ -186,7 +186,9 @@ public class SamplePlugin extends PluginApiGrpc.PluginApiImplBase {
                                 .setLabel("Adult")
                 )
                 .addRates(
-                        Rate.newBuilder().setId("standard")
+                        Rate.newBuilder()
+                                .setId("standard")
+                                .setLabel("Standard")
                 )
                 .setBookingType(BookingType.DATE_AND_TIME)
                 .setProductCategory(ProductCategory.ACTIVITIES)
