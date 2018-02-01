@@ -1,16 +1,24 @@
 package io.bokun.inventory.plugin.sample;
 
 import java.io.*;
+import java.nio.file.*;
 import java.util.*;
 import java.util.stream.*;
+
+import javax.annotation.*;
 
 import com.google.inject.*;
 import com.google.inject.name.*;
 import io.grpc.*;
+import io.grpc.netty.*;
+import io.netty.handler.ssl.*;
 import org.slf4j.*;
 
 import static com.google.inject.Scopes.*;
 import static com.google.inject.name.Names.*;
+import static io.grpc.Metadata.*;
+import static io.netty.handler.ssl.ClientAuth.*;
+import static io.netty.handler.ssl.SslProvider.*;
 
 /**
  * <p>The entry point for launching the plugin. Also bootstraps Gradle.</p>
@@ -24,12 +32,22 @@ import static com.google.inject.name.Names.*;
  */
 public class Main {
 
+    /**
+     * This value is what real server expects as well (if you're using shared secrets); don't change it as this will render the feature useless.
+     */
+    private static final String SHARED_SECRET_HEADER = "sharedSecret";
+
+    private static final Metadata.Key<String> SHARED_SECRET_METADATA_KEY = Metadata.Key.of(SHARED_SECRET_HEADER, ASCII_STRING_MARSHALLER);
+
     private static final Logger log = LoggerFactory.getLogger(Main.class);
 
     /**
      * All environment variables will have this prefix.
      */
     private static final String ENVIRONMENT_PREFIX = "SAMPLE_";
+
+    @SuppressWarnings("rawtypes")
+    private static final ServerCall.Listener NOOP_LISTENER = new ServerCall.Listener() {};
 
     /**
      * gRPC server.
@@ -61,10 +79,50 @@ public class Main {
      * @throws IOException if specified port can not be bound.
      */
     private void start() throws IOException {
-        server = ServerBuilder.forPort(port)
-                .addService(service)
-                .build()
-                .start();
+        Map<String, String> environmentVariables = System.getenv();
+        ServerBuilder<?> serverBuilder;
+
+        // configure TLS/SSL if requested
+        if (environmentVariables.containsKey("USE_TLS") && Boolean.TRUE.toString().equalsIgnoreCase(environmentVariables.get("USE_TLS"))) {
+            if (!environmentVariables.containsKey("CERT_FILE") || !Files.exists(Paths.get(environmentVariables.get("CERT_FILE")))) {
+                throw new IllegalStateException("Certificate file is required if running with TLS/SSL");
+            }
+            if (!environmentVariables.containsKey("KEY_FILE") || !Files.exists(Paths.get(environmentVariables.get("KEY_FILE")))) {
+                throw new IllegalStateException("Key file is required if running with TLS/SSL");
+            }
+            File certFile = new File(environmentVariables.get("CERT_FILE"));
+            SslContextBuilder sslContextBuilder = SslContextBuilder
+                    .forServer(
+                            certFile,
+                            new File(environmentVariables.get("KEY_FILE"))
+                    );
+            GrpcSslContexts.configure(sslContextBuilder);
+            SslContext sslContext = sslContextBuilder
+                    .sslProvider(OPENSSL)
+                    .trustManager(certFile)
+                    .clientAuth(OPTIONAL)
+                    .build();
+            serverBuilder = NettyServerBuilder.forPort(port)
+                    .sslContext(sslContext);
+            log.info("Using TLS/SSL");
+        } else {
+            serverBuilder = ServerBuilder.forPort(port);
+            log.info("Not using TLS/SSL");
+        }
+
+        // configure shared secret if set via environment variable
+        if (environmentVariables.containsKey("SHARED_SECRET")) {
+            String sharedSecret = environmentVariables.get("SHARED_SECRET");
+            serverBuilder.addService(ServerInterceptors.intercept(service, getSharedSecretCheckerInterceptor(sharedSecret)));
+            log.info("Using shared secret for caller authentication");
+        } else {
+            serverBuilder.addService(service);
+            log.info("Not using shared secret for caller authentication");
+        }
+
+        server = serverBuilder.build();
+        server.start();
+
         log.info("Server started, listening on port {}", port);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             // Use stderr here since the logger may have been reset by its JVM shutdown hook.
@@ -90,6 +148,32 @@ public class Main {
         if (server != null) {
             server.awaitTermination();
         }
+    }
+
+    /**
+     * Creates and returns a new interceptor which will intercept all service calls by checking shared secret against some predefined value.
+     *
+     * @return interceptor which should be wrapping real service with {@link ServerInterceptors#intercept(ServerServiceDefinition,
+     * ServerInterceptor...)}
+     */
+    @Nonnull
+    @SuppressWarnings("unchecked")
+    public static ServerInterceptor getSharedSecretCheckerInterceptor(@Nonnull String sharedSecret) {
+        return new ServerInterceptor() {
+            @Override
+            public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call,
+                                                                         Metadata headers,
+                                                                         ServerCallHandler<ReqT, RespT> next) {
+                String sharedSecretValue = headers.get(SHARED_SECRET_METADATA_KEY);
+                if (sharedSecretValue == null || !sharedSecret.equals(sharedSecretValue)) {
+                    log.warn("Incoming request does not have matching shared secret {}", sharedSecretValue);
+                    call.close(Status.UNAUTHENTICATED.withDescription("Incoming request does not have matching shared secret"), headers);
+                    return NOOP_LISTENER;
+                }
+                ServerCall.Listener<ReqT> listener = Contexts.interceptCall(Context.current(), call, headers, next);
+                return new ForwardingServerCallListener.SimpleForwardingServerCallListener<ReqT>(listener) {};
+            }
+        };
     }
 
     /**
