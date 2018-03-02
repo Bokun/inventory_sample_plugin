@@ -200,6 +200,35 @@ public class SamplePlugin extends PluginApiGrpc.PluginApiImplBase {
                                 .setHour(8)
                                 .setMinute(15)
                 )
+                .setAllYearOpeningHours(
+                        OpeningHours.newBuilder()
+                                .setMonday(
+                                        OpeningHoursWeekday.newBuilder()
+                                                .setOpen24Hours(false)
+                                                .addTimeIntervals(
+                                                        OpeningHoursTimeInterval.newBuilder()
+                                                                .setOpenFrom("08:00")
+                                                                .setOpenForHours(4)
+                                                                .setOpenForMinutes(0)
+                                                )
+                                                .addTimeIntervals(
+                                                        OpeningHoursTimeInterval.newBuilder()
+                                                                .setOpenFrom("13:00")
+                                                                .setOpenForHours(4)
+                                                                .setOpenForMinutes(0)
+                                                )
+                                )
+                )
+                .addExtras(
+                        Extra.newBuilder()
+                                .setId("some-extra-id")
+                                .setTitle("Some extra title")
+                                .setDescription("Some extra description")
+                                .setOptional(false)
+                                .setMaxPerBooking(1)
+                                .setLimitByPax(false)
+                                .setIncreasesCapacity(false)
+                )
                 .setTicketType(TicketType.QR_CODE)
                 .setMeetingType(MeetingType.MEET_ON_LOCATION)
                 .build();
