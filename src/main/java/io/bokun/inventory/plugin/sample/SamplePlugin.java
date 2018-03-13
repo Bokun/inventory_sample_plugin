@@ -334,6 +334,7 @@ public class SamplePlugin extends PluginApiGrpc.PluginApiImplBase {
     @Override
     public void confirmBooking(ConfirmBookingRequest request, StreamObserver<ConfirmBookingResponse> responseObserver) {
         log.trace("In ::confirmBooking");
+        processBookingSourceInfo(request.getReservationData().getBookingSource());
         String confirmationCode = UUID.randomUUID().toString();
         responseObserver.onNext(
                 ConfirmBookingResponse.newBuilder()
@@ -352,6 +353,42 @@ public class SamplePlugin extends PluginApiGrpc.PluginApiImplBase {
         );
         responseObserver.onCompleted();
         log.trace("Out ::confirmBooking");
+    }
+
+    /**
+     * Example code to get info about the booking initiator.
+     * Here you can see which data is available in each bookingSource.getSegment() case
+     * @param bookingSource bookinSource data structure that is provided in booking requests
+     */
+    void processBookingSourceInfo(BookingSource bookingSource) {
+        log.trace("Sales segment: {}",
+                bookingSource.getSegment().name());
+        log.trace("Booking channel: {} '{}'",
+                bookingSource.getBookingChannel().getId(),
+                bookingSource.getBookingChannel().getTitle());
+        switch (bookingSource.getSegment()) {
+            case OTA:
+                log.trace("OTA system: {}",
+                        bookingSource.getBookingChannel().getSystemType());
+                break;
+            case MARKETPLACE:
+                log.trace("Reseller vendor: {} '{}' reg.no. {}",
+                        bookingSource.getMarketplaceVendor().getId(),
+                        bookingSource.getMarketplaceVendor().getTitle(),
+                        bookingSource.getMarketplaceVendor().getCompanyRegistrationNumber());
+                break;
+            case AGENT_AREA:
+                log.trace("Booking agent: {} '{}' reg.no. {}",
+                        bookingSource.getBookingAgent().getId(),
+                        bookingSource.getBookingAgent().getTitle(),
+                        bookingSource.getBookingAgent().getCompanyRegistrationNumber());
+                break;
+            case DIRECT_OFFLINE:
+                log.trace("Extranet user: {} '{}'",
+                        bookingSource.getExtranetUser().getEmail(),
+                        bookingSource.getExtranetUser().getFullName());
+                break;
+        }
     }
 
     /**
