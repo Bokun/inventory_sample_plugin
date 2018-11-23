@@ -1,0 +1,15 @@
+{
+  "AWSEBDockerrunVersion": "1",
+  "Image": {
+    "Name": "$dockerName",
+    "Update": "true"
+  },
+  "Ports": [
+    {
+      "ContainerPort": "9026"
+    },
+    {
+      "ContainerPort": "9027"
+    }
+  ]
+}

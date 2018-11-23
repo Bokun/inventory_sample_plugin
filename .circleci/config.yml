@@ -1,0 +1,56 @@
+defaults: &defaults
+  working_directory: /tmp/workspace
+
+version: 2
+jobs:
+  build:
+    <<: *defaults
+    docker:
+      - image: 991828066748.dkr.ecr.us-east-1.amazonaws.com/circleci_docker_images:java8aws_v1
+        aws_auth:
+          aws_access_key_id: $AWS_ACCESS_KEY_ID
+          aws_secret_access_key: $AWS_SECRET_ACCESS_KEY
+    steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run: env
+      - run: aws configure list
+      - restore_cache:
+          key: build-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Branch }}-{{ checksum "build.gradle" }}
+      - run:
+          name: Run gradle build
+          command: |
+            ./gradlew buildDocker -Dorg.gradle.project.buildNo=$CIRCLE_BUILD_NUM
+      - run:
+          name: Push Docker Image to AWS ECR
+          command: |
+            deploy_to_ecr.sh
+      - store_artifacts:
+          path: build/reports
+          destination: reports
+      - store_test_results:
+          path: build/test-results
+      - save_cache:
+          key: build-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Branch }}-{{ checksum "build.gradle" }}
+          paths:
+            - ~/.gradle
+
+workflows:
+  version: 2
+  build-develop:
+    jobs:
+      - build:
+          context: nvirginia-test
+          filters:
+            branches:
+              only: develop
+  build-prod:
+    jobs:
+      - build:
+          context: dublin-prod
+          filters:
+            branches:
+              only:
+                - master
+                - /^feature.*/
