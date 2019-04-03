@@ -1,9 +1,12 @@
+import com.amazonaws.auth.AWSCredentials
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain
+
 group = 'bokun'
-version '0.3.3'         // should match the one in API and inventory service
+//version '0.3.4'         // should match the one in API and inventory service
 
 buildscript {
     ext {
-        awsVersion = '1.11.40'
+        awsVersion = '1.11.455'
     }
     repositories {
         mavenLocal()
@@ -22,6 +25,12 @@ buildscript {
 apply plugin: "java"
 apply plugin: "application"
 apply plugin: "idea"
+apply plugin: 'docker'
+apply plugin: 'jp.classmethod.aws'
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '4.7'
+}
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
@@ -35,6 +44,17 @@ configurations.all {
 }
 
 mainClassName="io.bokun.inventory.plugin.sample.Main"
+
+def buildNumber = 'DEV'
+if (project.hasProperty('buildNo')) {
+    buildNumber = buildNo
+}
+
+def jsonName = "${jar.baseName}-${buildNumber}.json"
+def dockerName = "${group}/${jar.baseName}:${buildNumber}"
+def jarName = "${jar.baseName}.jar"
+
+AWSCredentials awsCredentials = DefaultAWSCredentialsProviderChain.getInstance().credentials;
 
 repositories {
     maven {
@@ -54,12 +74,69 @@ dependencies {
     compile group: 'org.slf4j', name: 'slf4j-log4j12', version:'1.7.25'
     compile group: 'com.google.guava', name: 'guava', version:'23.0'
     compile 'io.grpc:grpc-all:1.2.0'
-    compile 'io.bokun.inventory:common-api-grpc:0.3.3'
-    compile 'io.bokun.inventory:plugin-api-grpc:0.3.3'
+    compile 'io.bokun.inventory:common-api-grpc:0.3.4'
+    compile 'io.bokun.inventory:plugin-api-grpc:0.3.4'
     compile group: 'com.squareup.okhttp', name: 'okhttp', version: '2.7.5'
     compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.6'
     compile 'com.google.inject:guice:4.1.0'
     compile 'io.netty:netty-tcnative-boringssl-static:1.1.33.Fork26'
 
     testCompile group: 'junit', name: 'junit', version:'4.12'
+}
+
+idea {
+    module {
+        sourceDirs += file("${projectDir}/src/generated/main/java");
+        sourceDirs += file("${projectDir}/src/generated/main/grpc");
+    }
+}
+
+mainClassName="io.bokun.inventory.plugin.sample.Main"
+
+startScripts.enabled = false
+
+task sourceJava(type: Jar) {
+    from sourceSets.main.allJava
+}
+
+jar {
+    from {
+        (configurations.runtime).collect {
+            it.isDirectory() ? it : zipTree(it)
+        }
+    }
+    manifest {
+        attributes 'Main-Class': 'io.bokun.inventory.plugin.sample.Main'
+    }
+}
+
+task createJsonAWS(type: Copy, dependsOn: clean) {
+    println "createJsonAWS"
+
+    from "src/main/docker/aws.json"
+    into "build/bundle"
+    expand(dockerName: dockerName)
+    rename { String fileName ->
+        fileName.replace("aws.json", jsonName)
+    }
+}
+
+task buildDocker(type: Docker, dependsOn: [build]) {
+    push = false
+    applicationName = jar.baseName
+    tagVersion = buildNumber
+    dockerfile = file('src/main/docker/Dockerfile')
+    doFirst {
+        println("libs = ${project.buildDir}/libs")
+        println("jar = ${jar.baseName}")
+        println("${project.name}-${version}.jar")
+        println(jarName)
+        copy {
+            println("copy jar")
+            println("jar = ${jarName}")
+            from "${project.buildDir}/libs"
+            into stageDir
+            include "${jarName}"
+        }
+    }
 }
