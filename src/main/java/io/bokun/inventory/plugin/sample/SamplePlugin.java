@@ -159,6 +159,11 @@ public class SamplePlugin extends PluginApiGrpc.PluginApiImplBase {
                                 .setId("ADT")
                                 .setLabel("Adult")
                 )
+                .addPricingCategories(
+                        PricingCategory.newBuilder()
+                                .setId("CHD")
+                                .setLabel("Child")
+                )
                 .addCities("London")
                 .addCountries("GB")
                 .build();
@@ -184,6 +189,11 @@ public class SamplePlugin extends PluginApiGrpc.PluginApiImplBase {
                         PricingCategory.newBuilder()
                                 .setId("ADT")
                                 .setLabel("Adult")
+                )
+                .addPricingCategories(
+                        PricingCategory.newBuilder()
+                                .setId("CHD")
+                                .setLabel("Child")
                 )
                 .addRates(
                         Rate.newBuilder()
@@ -290,6 +300,15 @@ public class SamplePlugin extends PluginApiGrpc.PluginApiImplBase {
                                                                         .setPrice(
                                                                                 Price.newBuilder()
                                                                                         .setAmount("100")
+                                                                                        .setCurrency("EUR")
+                                                                        )
+                                                        )
+                                                        .addPricingCategoryWithPrice(
+                                                                PricingCategoryWithPrice.newBuilder()
+                                                                        .setPricingCategoryId("CHD")
+                                                                        .setPrice(
+                                                                                Price.newBuilder()
+                                                                                        .setAmount("10")
                                                                                         .setCurrency("EUR")
                                                                         )
                                                         )
