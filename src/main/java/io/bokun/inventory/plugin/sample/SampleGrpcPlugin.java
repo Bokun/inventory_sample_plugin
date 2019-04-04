@@ -21,13 +21,13 @@ import static io.bokun.inventory.common.api.grpc.PluginParameterDataType.*;
 import static java.util.concurrent.TimeUnit.*;
 
 /**
- * The actual Inventory Service API implementation.
+ * Inventory Service API implementation using gRPC transport.
  *
  * @author Mindaugas Žakšauskas
  */
-public class SamplePlugin extends PluginApiGrpc.PluginApiImplBase {
+public class SampleGrpcPlugin extends PluginApiGrpc.PluginApiImplBase {
 
-    private static final Logger log = LoggerFactory.getLogger(SamplePlugin.class);
+    private static final Logger log = LoggerFactory.getLogger(SampleGrpcPlugin.class);
 
     /**
      * For using with OkHttp.
@@ -42,7 +42,7 @@ public class SamplePlugin extends PluginApiGrpc.PluginApiImplBase {
     private final OkHttpClient client;
 
     @Inject
-    public SamplePlugin() {
+    public SampleGrpcPlugin() {
         this.client = new OkHttpClient();
         client.setReadTimeout(DEFAULT_READ_TIMEOUT, SECONDS);
     }
@@ -110,7 +110,7 @@ public class SamplePlugin extends PluginApiGrpc.PluginApiImplBase {
      * @return url builder which is ready to use.
      */
     @Nonnull
-    private HttpUrl.Builder getUrlBuilder(@Nonnull SamplePlugin.Configuration configuration) {
+    private HttpUrl.Builder getUrlBuilder(@Nonnull SampleGrpcPlugin.Configuration configuration) {
         return new HttpUrl.Builder()
                 .scheme(configuration.scheme)
                 .host(configuration.host)

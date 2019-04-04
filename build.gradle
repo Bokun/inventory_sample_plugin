@@ -1,9 +1,6 @@
 import com.amazonaws.auth.AWSCredentials
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain
 
-group = 'bokun'
-//version '0.3.4'         // should match the one in API and inventory service
-
 buildscript {
     ext {
         awsVersion = '1.11.455'
@@ -27,6 +24,9 @@ apply plugin: "application"
 apply plugin: "idea"
 apply plugin: 'docker'
 apply plugin: 'jp.classmethod.aws'
+
+group = 'bokun'
+//version '0.3.4'         // should match the one in API and inventory service
 
 task wrapper(type: Wrapper) {
     gradleVersion = '4.7'
@@ -80,6 +80,7 @@ dependencies {
     compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.6'
     compile 'com.google.inject:guice:4.2.2'
     compile 'io.netty:netty-tcnative-boringssl-static:2.0.1.Final'
+    compile 'io.undertow:undertow-core:2.0.19.Final'
 
     testCompile group: 'junit', name: 'junit', version:'4.12'
 }

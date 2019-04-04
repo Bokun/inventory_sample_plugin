@@ -12,6 +12,8 @@ import com.google.inject.name.*;
 import io.grpc.*;
 import io.grpc.netty.*;
 import io.netty.handler.ssl.*;
+import io.undertow.*;
+import io.undertow.server.*;
 import org.slf4j.*;
 
 import static com.google.inject.Scopes.*;
@@ -60,17 +62,25 @@ public class Main {
     private final int port;
 
     /**
-     * The actual implementation of the plugin API.
+     * gRPC implementation of the plugin API.
      */
-    private final SamplePlugin service;
+    private final SampleGrpcPlugin grpcService;
+
+    /**
+     * REST implementation of the plugin API.
+     */
+    private final SampleRestPlugin restService;
 
     /**
      * Called by Gradle
      */
     @Inject
-    public Main(@Named(ENVIRONMENT_PREFIX + "PLUGIN_PORT") int port, SamplePlugin service) {
+    public Main(@Named(ENVIRONMENT_PREFIX + "PLUGIN_PORT") int port,
+                SampleGrpcPlugin grpcService,
+                SampleRestPlugin restService) {
         this.port = port;
-        this.service = service;
+        this.grpcService = grpcService;
+        this.restService = restService;
     }
 
     /**
@@ -113,10 +123,10 @@ public class Main {
         // configure shared secret if set via environment variable
         if (environmentVariables.containsKey("SHARED_SECRET")) {
             String sharedSecret = environmentVariables.get("SHARED_SECRET");
-            serverBuilder.addService(ServerInterceptors.intercept(service, getSharedSecretCheckerInterceptor(sharedSecret)));
+            serverBuilder.addService(ServerInterceptors.intercept(grpcService, getSharedSecretCheckerInterceptor(sharedSecret)));
             log.info("Using shared secret for caller authentication");
         } else {
-            serverBuilder.addService(service);
+            serverBuilder.addService(grpcService);
             log.info("Not using shared secret for caller authentication");
         }
 
@@ -181,13 +191,33 @@ public class Main {
      */
     public static void main(String[] args) throws IOException, InterruptedException {
         log.info("Starting server...");
+        boolean isRest = (args.length == 1) && "-rest".equals(args[0]);
+        boolean isGrpc = (args.length == 1) && "-grpc".equals(args[0]);
+
+        if (!isRest && !isGrpc) {
+            System.err.println("Usage: Main [OPTION]");
+            System.err.println("  -rest Runs sample RESTful service");
+            System.err.println("  -grpc Runs sample gRPC service");
+            System.exit(1);
+        }
         Injector injector = Guice.createInjector(new GuiceInitializer());
-
         Main server = injector.getInstance(Main.class);
-        server.start();
 
-        server.blockUntilShutdown();
-        log.info("The server has been stopped.");
+        if (isGrpc) {
+            server.start();
+            server.blockUntilShutdown();
+            log.info("gRPC server has been stopped.");
+        }
+        if (isRest) {
+            Undertow.builder()
+                    .addHttpListener(server.port, "localhost")
+                    .setHandler(
+                            new RoutingHandler()
+                                    .get("/plugin/definition", server.restService::getDefinition)
+                    )
+                    .build()
+                    .start();
+        }
     }
 
     /**
@@ -202,7 +232,7 @@ public class Main {
                     .collect(Collectors.toMap(entry -> entry.getKey().toUpperCase(), Map.Entry::getValue));
             Binder binder = binder();
             bindProperties(binder, guiceSpecificVars);
-            binder.bind(SamplePlugin.class).in(SINGLETON);
+            binder.bind(SampleGrpcPlugin.class).in(SINGLETON);
             binder.bind(Main.class).in(SINGLETON);
         }
     }
