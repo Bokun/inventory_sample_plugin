@@ -14,6 +14,7 @@ import io.grpc.netty.*;
 import io.netty.handler.ssl.*;
 import io.undertow.*;
 import io.undertow.server.*;
+import io.undertow.server.handlers.*;
 import org.slf4j.*;
 
 import static com.google.inject.Scopes.*;
@@ -214,6 +215,9 @@ public class Main {
                     .setHandler(
                             new RoutingHandler()
                                     .get("/plugin/definition", server.restService::getDefinition)
+                                    .post("/product/search", new BlockingHandler(server.restService::searchProducts))
+                                    .post("/product/getById", new BlockingHandler(server.restService::getProductById))
+                                    .post("/products/getAvailable", new BlockingHandler(server.restService::getAvailableProducts))
                     )
                     .build()
                     .start();

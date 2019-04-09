@@ -1,14 +1,21 @@
 package io.bokun.inventory.plugin.sample;
 
+import java.io.*;
+import java.util.*;
+
 import javax.annotation.*;
 
+import com.google.common.collect.*;
 import com.google.gson.*;
+import com.google.inject.*;
+import com.squareup.okhttp.*;
 import io.bokun.inventory.plugin.api.rest.*;
 import io.undertow.server.*;
 import org.slf4j.*;
 
 import static io.bokun.inventory.plugin.api.rest.PluginCapability.*;
 import static io.undertow.util.Headers.*;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
  * The actual Inventory Service API implementation.
@@ -18,6 +25,19 @@ import static io.undertow.util.Headers.*;
 public class SampleRestPlugin {
 
     private static final Logger log = LoggerFactory.getLogger(SampleRestPlugin.class);
+
+    /**
+     * Default OkHttp read timeout: how long to wait (in seconds) for the backend to respond to requests.
+     */
+    private static final long DEFAULT_READ_TIMEOUT = 30L;
+
+    private final OkHttpClient client;
+
+    @Inject
+    public SampleRestPlugin() {
+        this.client = new OkHttpClient();
+        client.setReadTimeout(DEFAULT_READ_TIMEOUT, SECONDS);
+    }
 
     // helper method to express string as required string parameter structure, required by the REST API
     private PluginConfigurationParameter asRequiredStringParameter(String name) {
@@ -41,7 +61,6 @@ public class SampleRestPlugin {
      * Responds to <tt>/plugin/definition</tt> by sending back simple plugin definition JSON object.
      */
     public void getDefinition(@Nonnull HttpServerExchange exchange) {
-        exchange.getResponseHeaders().put(CONTENT_TYPE, "application/json; charset=utf-8");
         PluginDefinition definition = new PluginDefinition();
         definition.setName("Sample plugin");
         definition.setDescription("Provides availability and accepts bookings into <YourCompany> booking system");
@@ -50,164 +69,192 @@ public class SampleRestPlugin {
         definition.getCapabilities().add(RESERVATIONS);
 
         // reuse parameter names from grpc
-        definition.getParameters().add(asRequiredStringParameter(SampleGrpcPlugin.Configuration.SAMPLE_API_SCHEME));    // e.g. https
-        definition.getParameters().add(asRequiredStringParameter(SampleGrpcPlugin.Configuration.SAMPLE_API_HOST));      // e.g. your-api.your-company.com
-        definition.getParameters().add(asRequiredLongParameter(SampleGrpcPlugin.Configuration.SAMPLE_API_PORT));        // e.g. 443
-        definition.getParameters().add(asRequiredStringParameter(SampleGrpcPlugin.Configuration.SAMPLE_API_PATH));      // e.g. /api/1
-        definition.getParameters().add(asRequiredStringParameter(SampleGrpcPlugin.Configuration.SAMPLE_API_USERNAME));
-        definition.getParameters().add(asRequiredStringParameter(SampleGrpcPlugin.Configuration.SAMPLE_API_PASSWORD));
+        definition.getParameters().add(asRequiredStringParameter(Configuration.SAMPLE_API_SCHEME));    // e.g. https
+        definition.getParameters().add(asRequiredStringParameter(Configuration.SAMPLE_API_HOST));      // e.g. your-api.your-company.com
+        definition.getParameters().add(asRequiredLongParameter(Configuration.SAMPLE_API_PORT));        // e.g. 443
+        definition.getParameters().add(asRequiredStringParameter(Configuration.SAMPLE_API_PATH));      // e.g. /api/1
+        definition.getParameters().add(asRequiredStringParameter(Configuration.SAMPLE_API_USERNAME));
+        definition.getParameters().add(asRequiredStringParameter(Configuration.SAMPLE_API_PASSWORD));
 
+        exchange.getResponseHeaders().put(CONTENT_TYPE, "application/json; charset=utf-8");
         exchange.getResponseSender().send(new Gson().toJson(definition));
     }
 
-//    /**
-//     * This method should list all your products
-//     */
-//    @Override
-//    public void searchProducts(SearchProductsRequest request, StreamObserver<BasicProductInfo> responseObserver) {
-//        log.trace("In ::searchProducts");
-//        Configuration configuration = new Configuration(request.getParametersList());
-//
-//        // Let's say we are about to call http(s)://yoururl/product to get a list of products
-//        HttpUrl.Builder urlBuilder = getUrlBuilder(configuration)
-//                        .addPathSegment("product");
-//        // Create HTTP get call using basic authorization, taking username/password from the same configuration
-//        Request getRequest = new Request.Builder()
-//                .addHeader("Content-Type", "application/json")
-//                .addHeader("Authorization", Credentials.basic(configuration.username, configuration.password))
-//                .url(urlBuilder.build())
-//                .build();
-//        log.debug("Making HTTP GET request {}", getRequest);
-//
-//        String httpResponseBody;
-//        try {
-//            client.newCall(getRequest)
-//                    .execute()
-//                    .body().string();
-//        } catch (IOException e) {
-//            log.error("I/O error while calling remote API", e);
-//            responseObserver.onError(e);
-//            return;
-//        }
-//
-//        // Do something with httpResponseBody, e.g. convert this JSON into POJO and convert that POJO into BasicProductInfo
-//        // Don't forget to filter them by country and city, based on request parameters.
-//        BasicProductInfo basicProductInfo = BasicProductInfo.newBuilder()
-//                .setId("123")
-//                .setName("Mock product")
-//                .setDescription("Mock product description")
-//                .addPricingCategories(
-//                        PricingCategory.newBuilder()
-//                                .setId("ADT")
-//                                .setLabel("Adult")
-//                )
-//                .addPricingCategories(
-//                        PricingCategory.newBuilder()
-//                                .setId("CHD")
-//                                .setLabel("Child")
-//                )
-//                .addCities("London")
-//                .addCountries("GB")
-//                .build();
-//        responseObserver.onNext(basicProductInfo);      // you will likely want to run this in a loop, to return multiple products
-//        responseObserver.onCompleted();                 // make sure this call is never forgotten as IS will otherwise block waiting endlessly
-//        log.trace("Successfully completed ::searchProducts");
-//    }
-//
-//    /**
-//     * Return detailed information about one particular product by given ID.
-//     */
-//    @Override
-//    public void getProductById(GetProductByIdRequest request, StreamObserver<ProductDescription> responseObserver) {
-//        log.trace("In ::getProductById");
-//        Configuration configuration = new Configuration(request.getParametersList());
-//
-//        // similar to searchProducts except this should return a single product with a bit more information
-//        ProductDescription productDescription = ProductDescription.newBuilder()
-//                .setId("123")
-//                .setName("Mock product")
-//                .setDescription("Mock product description")
-//                .addPricingCategories(
-//                        PricingCategory.newBuilder()
-//                                .setId("ADT")
-//                                .setLabel("Adult")
-//                )
-//                .addPricingCategories(
-//                        PricingCategory.newBuilder()
-//                                .setId("CHD")
-//                                .setLabel("Child")
-//                )
-//                .addRates(
-//                        Rate.newBuilder()
-//                                .setId("standard")
-//                                .setLabel("Standard")
-//                )
-//                .setBookingType(BookingType.DATE_AND_TIME)
-//                .setProductCategory(ProductCategory.ACTIVITIES)
-//                .addTicketSupport(TicketSupport.TICKET_PER_BOOKING)
-//                .addCities("London")
-//                .addCountries("GB")
-//                .addStartTimes(
-//                        Time.newBuilder()
-//                                .setHour(8)
-//                                .setMinute(15)
-//                )
-//                .setAllYearOpeningHours(
-//                        OpeningHours.newBuilder()
-//                                .setMonday(
-//                                        OpeningHoursWeekday.newBuilder()
-//                                                .setOpen24Hours(false)
-//                                                .addTimeIntervals(
-//                                                        OpeningHoursTimeInterval.newBuilder()
-//                                                                .setOpenFrom("08:00")
-//                                                                .setOpenForHours(4)
-//                                                                .setOpenForMinutes(0)
-//                                                )
-//                                                .addTimeIntervals(
-//                                                        OpeningHoursTimeInterval.newBuilder()
-//                                                                .setOpenFrom("13:00")
-//                                                                .setOpenForHours(4)
-//                                                                .setOpenForMinutes(0)
-//                                                )
-//                                )
-//                )
-//                .addExtras(
-//                        Extra.newBuilder()
-//                                .setId("some-extra-id")
-//                                .setTitle("Some extra title")
-//                                .setDescription("Some extra description")
-//                                .setOptional(false)
-//                                .setMaxPerBooking(1)
-//                                .setLimitByPax(false)
-//                                .setIncreasesCapacity(false)
-//                )
-//                .setTicketType(TicketType.QR_CODE)
-//                .setMeetingType(MeetingType.MEET_ON_LOCATION)
-//                .build();
-//        responseObserver.onNext(productDescription);
-//        responseObserver.onCompleted();
-//        log.trace("Successfully completed ::getProductById");
-//    }
-//
-//    /**
-//     * A set of product ids provided, return their availability over given date range.
-//     * This will return a subset of product IDs passed on via ProductAvailabilityRequest.
-//     * Note: even though request contains capacity and date range, for a matching product it is enough to have availabilities for *some* dates over
-//     * requested period. Subsequent GetProductAvailability request will clarify precise dates and capacities.
-//     */
-//    @Override
-//    public void getAvailableProducts(ProductsAvailabilityRequest request, StreamObserver<ProductsAvailabilityResponse> responseObserver) {
-//        log.trace("In ::getAvailableProducts");
-//        responseObserver.onNext(
-//                ProductsAvailabilityResponse.newBuilder()
-//                        .setProductId("123")
-//                        .setActualCheckDone(false)
-//                        .build()
-//        );
-//        responseObserver.onCompleted();
-//        log.trace("Out ::getAvailableProducts");
-//    }
-//
+    /**
+     * Helper method which creates {@link HttpUrl.Builder} based on configuration (scheme/host/port/path).
+     *
+     * @param configuration configuration to use to create OkHttp url builder.
+     * @return url builder which is ready to use.
+     */
+    @Nonnull
+    private HttpUrl.Builder getUrlBuilder(@Nonnull Configuration configuration) {
+        return new HttpUrl.Builder()
+                .scheme(configuration.scheme)
+                .host(configuration.host)
+                .port(configuration.port)
+                .encodedPath(configuration.apiPath);
+    }
+
+    /**
+     * This method should list all your products
+     */
+    public void searchProducts(@Nonnull HttpServerExchange exchange) {
+        SearchProductRequest request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), SearchProductRequest.class);
+        Configuration configuration = Configuration.fromRestParameters(request.getParameters());
+
+        // Let's say we are about to call http(s)://yoururl/product to get a list of products
+        HttpUrl.Builder urlBuilder = getUrlBuilder(configuration)
+                        .addPathSegment("product");
+        // Create HTTP get call using basic authorization, taking username/password from the same configuration
+        Request getRequest = new Request.Builder()
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Authorization", Credentials.basic(configuration.username, configuration.password))
+                .url(urlBuilder.build())
+                .build();
+
+        String httpResponseBody;
+        try {
+            client.newCall(getRequest)
+                    .execute()
+                    .body().string();
+        } catch (IOException e) {
+            log.error("Error calling request {}", getRequest, e);
+            exchange.setStatusCode(500);
+            exchange.getResponseSender().send("Error: " + e.getMessage());
+            return;
+        }
+
+        // Do something with httpResponseBody, e.g. convert this JSON into POJO and convert that POJO into BasicProductInfo
+        // Don't forget to filter them by country and city, based on request parameters.
+        BasicProductInfo basicProductInfo = new BasicProductInfo();     // you will likely want to run this in a loop, to return multiple products
+        basicProductInfo.setId("123");
+        basicProductInfo.setName("Mock product");
+        basicProductInfo.setDescription("Mock product description");
+        basicProductInfo.setPricingCategories(new ArrayList<>());
+        {
+            PricingCategory adult = new PricingCategory();
+            adult.setId("ADT");         // can be any code as long as it is unique per pricing category. This will also connect with other calls
+            adult.setLabel("Adult");
+            basicProductInfo.getPricingCategories().add(adult);
+        }
+        {
+            PricingCategory child = new PricingCategory();
+            child.setId("CHD");
+            child.setLabel("Adult");
+            basicProductInfo.getPricingCategories().add(child);
+        }
+
+        basicProductInfo.setCities(ImmutableList.of("London"));
+        basicProductInfo.setCountries(ImmutableList.of("GB"));
+
+        exchange.getResponseHeaders().put(CONTENT_TYPE, "application/json; charset=utf-8");
+        exchange.getResponseSender().send(new Gson().toJson(Lists.newArrayList(basicProductInfo)));
+    }
+
+    /**
+     * Return detailed information about one particular product by given ID.
+     */
+    public void getProductById(HttpServerExchange exchange) {
+        GetProductByIdRequest request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), GetProductByIdRequest.class);
+        Configuration configuration = Configuration.fromRestParameters(request.getParameters());
+
+        // similar to searchProducts except this should return a single product with a bit more information
+        ProductDescription description = new ProductDescription();
+        description.setId("123");
+        description.setName("Mock product");
+        description.setDescription("Mock product description");
+
+        description.setPricingCategories(new ArrayList<>());
+        {
+            PricingCategory adult = new PricingCategory();
+            adult.setId("ADT");         // can be any code as long as it is unique per pricing category. This will also connect with other calls
+            adult.setLabel("Adult");
+            description.getPricingCategories().add(adult);
+        }
+        {
+            PricingCategory child = new PricingCategory();
+            child.setId("CHD");
+            child.setLabel("Adult");
+            description.getPricingCategories().add(child);
+        }
+
+        Rate rate = new Rate();
+        rate.setId("standard");
+        rate.setLabel("Standard");
+        description.setRates(ImmutableList.of(rate));
+        description.setBookingType(BookingType.DATE_AND_TIME);
+        description.setProductCategory(ProductCategory.ACTIVITIES);
+        description.setTicketSupport(
+                ImmutableList.of(
+                        TicketSupport.TICKET_PER_BOOKING
+                )
+        );
+        description.setCities(ImmutableList.of("London"));
+        description.setCountries(ImmutableList.of("GB"));
+
+        Time startTime = new Time();
+        startTime.setHour(8);
+        startTime.setMinute(15);
+        description.setStartTimes(ImmutableList.of(startTime));
+
+        {                                                                               // opening hours block
+            OpeningHoursWeekday openingHoursMonday = new OpeningHoursWeekday();
+            openingHoursMonday.setOpen24Hours(false);
+            OpeningHoursTimeInterval mondayIntervalAM = new OpeningHoursTimeInterval();
+            mondayIntervalAM.setOpenFrom("08:00");
+            mondayIntervalAM.setOpenForHours(4);
+            mondayIntervalAM.setOpenForMinutes(0);
+            OpeningHoursTimeInterval mondayIntervalPM = new OpeningHoursTimeInterval();
+            mondayIntervalPM.setOpenFrom("13:00");
+            mondayIntervalPM.setOpenForHours(4);
+            mondayIntervalPM.setOpenForMinutes(0);
+            openingHoursMonday.setTimeIntervals(ImmutableList.of(mondayIntervalAM, mondayIntervalPM));
+            OpeningHours openingHours = new OpeningHours();
+            openingHours.setMonday(openingHoursMonday);
+            description.setAllYearOpeningHours(openingHours);
+        }
+
+        {                                                                               // extras block
+            Extra extra = new Extra();
+            extra.setId("some-extra-id");
+            extra.setTitle("Some extra title");
+            extra.setDescription("Some extra description");
+            extra.setOptional(false);
+            extra.setMaxPerBooking(1);
+            extra.setLimitByPax(false);
+            extra.setIncreasesCapacity(false);
+            description.setExtras(ImmutableList.of(extra));
+        }
+
+        description.setTicketType(TicketType.QR_CODE);
+        description.setMeetingType(MeetingType.MEET_ON_LOCATION);
+
+        exchange.getResponseHeaders().put(CONTENT_TYPE, "application/json; charset=utf-8");
+        exchange.getResponseSender().send(new Gson().toJson(description));
+    }
+
+    /**
+     * A set of product ids provided, return their availability over given date range ("shallow" call).
+     * This will return a subset of product IDs passed on via ProductAvailabilityRequest.
+     * Note: even though request contains capacity and date range, for a matching product it is enough to have availabilities for *some* dates over
+     * requested period. Subsequent GetProductAvailability request will clarify precise dates and capacities.
+     */
+    public void getAvailableProducts(HttpServerExchange exchange) {
+        ProductsAvailabilityRequest request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), ProductsAvailabilityRequest.class);
+        Configuration configuration = Configuration.fromRestParameters(request.getParameters());
+
+        if (!request.getExternalProductIds().contains("123")) {
+            throw new IllegalStateException("Previous call only returned product having id=123");
+        }
+
+        ProductsAvailabilityResponse response = new ProductsAvailabilityResponse();
+        response.setActualCheckDone(true);
+        response.setProductId("123");
+
+        exchange.getResponseHeaders().put(CONTENT_TYPE, "application/json; charset=utf-8");
+        exchange.getResponseSender().send(new Gson().toJson(ImmutableList.of(response)));
+    }
+
 //    /**
 //     * Get availability of a particular product over a date range. This request should follow GetAvailableProducts and provide more details on
 //     * precise dates/times for each product as well as capacity for each date. This call, however, is for a single product only (as opposed to

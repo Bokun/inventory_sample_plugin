@@ -30,12 +30,7 @@ public class SampleGrpcPlugin extends PluginApiGrpc.PluginApiImplBase {
     private static final Logger log = LoggerFactory.getLogger(SampleGrpcPlugin.class);
 
     /**
-     * For using with OkHttp.
-     */
-    private static final MediaType JSON_TYPE = MediaType.parse("application/json; charset=utf-8");
-
-    /**
-     * Default OkHttp read timeout: how long to wait (in seconds) for BB backend to respond to requests.
+     * Default OkHttp read timeout: how long to wait (in seconds) for the backend to respond to requests.
      */
     private static final long DEFAULT_READ_TIMEOUT = 30L;
 
@@ -110,7 +105,7 @@ public class SampleGrpcPlugin extends PluginApiGrpc.PluginApiImplBase {
      * @return url builder which is ready to use.
      */
     @Nonnull
-    private HttpUrl.Builder getUrlBuilder(@Nonnull SampleGrpcPlugin.Configuration configuration) {
+    private HttpUrl.Builder getUrlBuilder(@Nonnull Configuration configuration) {
         return new HttpUrl.Builder()
                 .scheme(configuration.scheme)
                 .host(configuration.host)
@@ -124,7 +119,7 @@ public class SampleGrpcPlugin extends PluginApiGrpc.PluginApiImplBase {
     @Override
     public void searchProducts(SearchProductsRequest request, StreamObserver<BasicProductInfo> responseObserver) {
         log.trace("In ::searchProducts");
-        Configuration configuration = new Configuration(request.getParametersList());
+        Configuration configuration = Configuration.fromGrpcParameters(request.getParametersList());
 
         // Let's say we are about to call http(s)://yoururl/product to get a list of products
         HttpUrl.Builder urlBuilder = getUrlBuilder(configuration)
@@ -178,7 +173,7 @@ public class SampleGrpcPlugin extends PluginApiGrpc.PluginApiImplBase {
     @Override
     public void getProductById(GetProductByIdRequest request, StreamObserver<ProductDescription> responseObserver) {
         log.trace("In ::getProductById");
-        Configuration configuration = new Configuration(request.getParametersList());
+        Configuration configuration = Configuration.fromGrpcParameters(request.getParametersList());
 
         // similar to searchProducts except this should return a single product with a bit more information
         ProductDescription productDescription = ProductDescription.newBuilder()
@@ -438,38 +433,5 @@ public class SampleGrpcPlugin extends PluginApiGrpc.PluginApiImplBase {
         );
         responseObserver.onCompleted();
         log.trace("Out ::cancelBooking");
-    }
-
-    /**
-     * Holder of configuration parameter values.
-     */
-    public static final class Configuration {
-
-        static final String SAMPLE_API_SCHEME = "SAMPLE_API_SCHEME";
-        static final String SAMPLE_API_HOST = "SAMPLE_API_HOST";
-        static final String SAMPLE_API_PORT = "SAMPLE_API_PORT";
-        static final String SAMPLE_API_PATH = "SAMPLE_API_PATH";
-        static final String SAMPLE_API_USERNAME = "SAMPLE_API_USERNAME";
-        static final String SAMPLE_API_PASSWORD = "SAMPLE_API_PASSWORD";
-
-        String scheme;
-        String host;
-        int port;
-        String apiPath;
-        String username;
-        String password;
-
-        Configuration(Iterable<PluginConfigurationParameterValue> configParameters) {
-            for (PluginConfigurationParameterValue parameterValue : configParameters) {
-                switch (parameterValue.getName()) {
-                    case SAMPLE_API_SCHEME: scheme = parameterValue.getValue(); break;
-                    case SAMPLE_API_HOST: host = parameterValue.getValue(); break;
-                    case SAMPLE_API_PORT: port = Integer.parseInt(parameterValue.getValue()); break;
-                    case SAMPLE_API_PATH: apiPath = parameterValue.getValue(); break;
-                    case SAMPLE_API_USERNAME: username = parameterValue.getValue(); break;
-                    case SAMPLE_API_PASSWORD: password = parameterValue.getValue(); break;
-                }
-            }
-        }
     }
 }
