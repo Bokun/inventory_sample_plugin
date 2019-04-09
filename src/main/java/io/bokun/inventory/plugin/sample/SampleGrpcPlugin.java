@@ -236,6 +236,7 @@ public class SampleGrpcPlugin extends PluginApiGrpc.PluginApiImplBase {
                 )
                 .setTicketType(TicketType.QR_CODE)
                 .setMeetingType(MeetingType.MEET_ON_LOCATION)
+                .setDropoffAvailable(false)
                 .build();
         responseObserver.onNext(productDescription);
         responseObserver.onCompleted();

@@ -1,6 +1,7 @@
 package io.bokun.inventory.plugin.sample;
 
 import java.io.*;
+import java.time.*;
 import java.util.*;
 
 import javax.annotation.*;
@@ -15,7 +16,7 @@ import org.slf4j.*;
 
 import static io.bokun.inventory.plugin.api.rest.PluginCapability.*;
 import static io.undertow.util.Headers.*;
-import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.concurrent.TimeUnit.*;
 
 /**
  * The actual Inventory Service API implementation.
@@ -228,6 +229,7 @@ public class SampleRestPlugin {
 
         description.setTicketType(TicketType.QR_CODE);
         description.setMeetingType(MeetingType.MEET_ON_LOCATION);
+        description.setDropoffAvailable(false);
 
         exchange.getResponseHeaders().put(CONTENT_TYPE, "application/json; charset=utf-8");
         exchange.getResponseSender().send(new Gson().toJson(description));
@@ -255,150 +257,154 @@ public class SampleRestPlugin {
         exchange.getResponseSender().send(new Gson().toJson(ImmutableList.of(response)));
     }
 
-//    /**
-//     * Get availability of a particular product over a date range. This request should follow GetAvailableProducts and provide more details on
-//     * precise dates/times for each product as well as capacity for each date. This call, however, is for a single product only (as opposed to
-//     * {@link #getAvailableProducts(ProductsAvailabilityRequest, StreamObserver)}) which checks many products but only does a basic shallow check.
-//     */
-//    @Override
-//    public void getProductAvailability(ProductAvailabilityRequest request, StreamObserver<ProductAvailabilityWithRatesResponse> responseObserver) {
-//        log.trace("In ::getProductAvailability");
-//        LocalDate tomorrow = LocalDate.now().plusDays(1L);
-//        responseObserver.onNext(
-//                ProductAvailabilityWithRatesResponse.newBuilder()
-//                        .setCapacity(10)
-//                        .setDate(
-//                                Date.newBuilder()
-//                                        .setYear(tomorrow.getYear())
-//                                        .setMonth(tomorrow.getMonthValue())
-//                                        .setDay(tomorrow.getDayOfMonth())
-//                        )
-//                        .setTime(
-//                                Time.newBuilder()
-//                                        .setHour(8)
-//                                        .setMinute(15)
-//                        )
-//                        .addRates(
-//                                RateWithPrice.newBuilder()
-//                                        .setRateId("standard")
-//                                        .setPricePerPerson(
-//                                                PricePerPerson.newBuilder()
-//                                                        .addPricingCategoryWithPrice(
-//                                                                PricingCategoryWithPrice.newBuilder()
-//                                                                        .setPricingCategoryId("ADT")
-//                                                                        .setPrice(
-//                                                                                Price.newBuilder()
-//                                                                                        .setAmount("100")
-//                                                                                        .setCurrency("EUR")
-//                                                                        )
-//                                                        )
-//                                                        .addPricingCategoryWithPrice(
-//                                                                PricingCategoryWithPrice.newBuilder()
-//                                                                        .setPricingCategoryId("CHD")
-//                                                                        .setPrice(
-//                                                                                Price.newBuilder()
-//                                                                                        .setAmount("10")
-//                                                                                        .setCurrency("EUR")
-//                                                                        )
-//                                                        )
-//                                        )
-//                        )
-//                        .build()
-//        );
-//        responseObserver.onCompleted();
-//        log.trace("Out ::getProductAvailability");
-//    }
-//
-//    /**
-//     * This call secures necessary resource(s), such as activity time slot which can later become a booking. The reservation should be held for some
-//     * limited time, and reverted back to being available if the booking is not confirmed.
-//     *
-//     * Only implement this method if {@link PluginCapability#SUPPORTS_RESERVATIONS} is among capabilities of your {@link PluginDefinition}.
-//     * Otherwise you are only required to implement {@link #createAndConfirmBooking(CreateConfirmBookingRequest, StreamObserver)} which does both
-//     * reservation and confirmation, this method can be left empty or non-overridden.
-//     */
-//    @Override
-//    public void createReservation(ReservationRequest request, StreamObserver<ReservationResponse> responseObserver) {
-//        log.trace("In ::createReservation");
-//        responseObserver.onNext(
-//                ReservationResponse.newBuilder()
-//                        .setSuccessfulReservation(
-//                                SuccessfulReservation.newBuilder()
-//                                        .setReservationConfirmationCode(UUID.randomUUID().toString())
-//                        )
-//                        .build()
-//        );
-//        responseObserver.onCompleted();
-//        log.trace("Out ::createReservation");
-//    }
-//
-//    /**
-//     * Once reserved, proceed with booking. This will be called in case if reservation has succeeded.
-//     *
-//     * Only implement this method if {@link PluginCapability#SUPPORTS_RESERVATIONS} is among capabilities of your {@link PluginDefinition}.
-//     * Otherwise you are only required to implement {@link #createAndConfirmBooking(CreateConfirmBookingRequest, StreamObserver)} which does both
-//     * reservation and confirmation, this method can be left empty or non-overridden.
-//     */
-//    @Override
-//    public void confirmBooking(ConfirmBookingRequest request, StreamObserver<ConfirmBookingResponse> responseObserver) {
-//        log.trace("In ::confirmBooking");
-//        processBookingSourceInfo(request.getReservationData().getBookingSource());
-//        String confirmationCode = UUID.randomUUID().toString();
-//        responseObserver.onNext(
-//                ConfirmBookingResponse.newBuilder()
-//                        .setSuccessfulBooking(
-//                                SuccessfulBooking.newBuilder()
-//                                        .setBookingConfirmationCode(confirmationCode)
-//                                        .setBookingTicket(
-//                                                Ticket.newBuilder()
-//                                                        .setQrTicket(
-//                                                                QrTicket.newBuilder()
-//                                                                        .setTicketBarcode(confirmationCode + "_ticket")
-//                                                        )
-//                                        )
-//                        )
-//                        .build()
-//        );
-//        responseObserver.onCompleted();
-//        log.trace("Out ::confirmBooking");
-//    }
-//
-//    /**
-//     * Example code to get info about the booking initiator.
-//     * Here you can see which data is available in each bookingSource.getSegment() case
-//     * @param bookingSource bookinSource data structure that is provided in booking requests
-//     */
-//    void processBookingSourceInfo(BookingSource bookingSource) {
-//        log.trace("Sales segment: {}",
-//                bookingSource.getSegment().name());
-//        log.trace("Booking channel: {} '{}'",
-//                bookingSource.getBookingChannel().getId(),
-//                bookingSource.getBookingChannel().getTitle());
-//        switch (bookingSource.getSegment()) {
-//            case OTA:
-//                log.trace("OTA system: {}",
-//                        bookingSource.getBookingChannel().getSystemType());
-//                break;
-//            case MARKETPLACE:
-//                log.trace("Reseller vendor: {} '{}' reg.no. {}",
-//                        bookingSource.getMarketplaceVendor().getId(),
-//                        bookingSource.getMarketplaceVendor().getTitle(),
-//                        bookingSource.getMarketplaceVendor().getCompanyRegistrationNumber());
-//                break;
-//            case AGENT_AREA:
-//                log.trace("Booking agent: {} '{}' reg.no. {}",
-//                        bookingSource.getBookingAgent().getId(),
-//                        bookingSource.getBookingAgent().getTitle(),
-//                        bookingSource.getBookingAgent().getCompanyRegistrationNumber());
-//                break;
-//            case DIRECT_OFFLINE:
-//                log.trace("Extranet user: {} '{}'",
-//                        bookingSource.getExtranetUser().getEmail(),
-//                        bookingSource.getExtranetUser().getFullName());
-//                break;
-//        }
-//    }
-//
+    /**
+     * Get availability of a particular product over a date range. This request should follow GetAvailableProducts and provide more details on
+     * precise dates/times for each product as well as capacity for each date. This call, however, is for a single product only (as opposed to
+     * {@link #getAvailableProducts(HttpServerExchange)} which checks many products but only does a basic shallow check.
+     */
+    public void getProductAvailability(HttpServerExchange exchange) {
+        log.trace("In ::getProductAvailability");
+
+        ProductAvailabilityRequest request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), ProductAvailabilityRequest.class);
+        Configuration configuration = Configuration.fromRestParameters(request.getParameters());
+
+        ProductAvailabilityWithRatesResponse response = new ProductAvailabilityWithRatesResponse();
+        response.setCapacity(10);
+
+        LocalDate tomorrow = LocalDate.now().plusDays(1L);
+        DateYMD tomorrowDate = new DateYMD();
+        tomorrowDate.setYear(tomorrow.getYear());
+        tomorrowDate.setMonth(tomorrow.getMonthValue());
+        tomorrowDate.setDay(tomorrow.getDayOfMonth());
+        response.setDate(tomorrowDate);
+
+        Time tomorrowTime = new Time();
+        tomorrowTime.setHour(8);
+        tomorrowTime.setMinute(15);
+        response.setTime(tomorrowTime);
+
+        RateWithPrice rate = new RateWithPrice();
+        rate.setRateId("standard");
+
+        PricePerPerson pricePerPerson = new PricePerPerson();
+        pricePerPerson.setPricingCategoryWithPrice(new ArrayList<>());
+        {
+            PricingCategoryWithPrice adultCategoryPrice = new PricingCategoryWithPrice();
+            adultCategoryPrice.setPricingCategoryId("ADT");
+            Price adultPrice = new Price();
+            adultPrice.setAmount("100");
+            adultPrice.setCurrency("EUR");
+            adultCategoryPrice.setPrice(adultPrice);
+            pricePerPerson.getPricingCategoryWithPrice().add(adultCategoryPrice);
+        }
+        {
+            PricingCategoryWithPrice childCategoryPrice = new PricingCategoryWithPrice();
+            childCategoryPrice.setPricingCategoryId("CHD");
+            Price childPrice = new Price();
+            childPrice.setAmount("10");
+            childPrice.setCurrency("EUR");
+            childCategoryPrice.setPrice(childPrice);
+            pricePerPerson.getPricingCategoryWithPrice().add(childCategoryPrice);
+        }
+        rate.setPricePerPerson(pricePerPerson);
+        response.setRates(ImmutableList.of(rate));
+
+        exchange.getResponseHeaders().put(CONTENT_TYPE, "application/json; charset=utf-8");
+        exchange.getResponseSender().send(new Gson().toJson(ImmutableList.of(response)));
+        log.trace("Out ::getProductAvailability");
+    }
+
+    /**
+     * This call secures necessary resource(s), such as activity time slot which can later become a booking. The reservation should be held for some
+     * limited time, and reverted back to being available if the booking is not confirmed.
+     *
+     * Only implement this method if {@link PluginCapability#RESERVATIONS} is among capabilities of your {@link PluginDefinition}.
+     * Otherwise you are only required to implement {@link #createAndConfirmBooking(HttpServerExchange)} which does both
+     * reservation and confirmation, this method can be left empty or non-overridden.
+     */
+    public void createReservation(HttpServerExchange exchange) {
+        log.trace("In ::createReservation");
+
+        ReservationResponse response = new ReservationResponse();
+        SuccessfulReservation reservation = new SuccessfulReservation();
+        reservation.setReservationConfirmationCode(UUID.randomUUID().toString());
+        response.setSuccessfulReservation(reservation);
+
+        exchange.getResponseHeaders().put(CONTENT_TYPE, "application/json; charset=utf-8");
+        exchange.getResponseSender().send(new Gson().toJson(response));
+        log.trace("Out ::createReservation");
+    }
+
+    /**
+     * Once reserved, proceed with booking. This will be called in case if reservation has succeeded.
+     *
+     * Only implement this method if {@link PluginCapability#RESERVATIONS} is among capabilities of your {@link PluginDefinition}.
+     * Otherwise you are only required to implement {@link #createAndConfirmBooking(HttpServerExchange)} which does both
+     * reservation and confirmation, this method can be left empty or non-overridden.
+     */
+    public void confirmBooking(HttpServerExchange exchange) {
+        log.trace("In ::confirmBooking");
+
+        ConfirmBookingRequest request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), ConfirmBookingRequest.class);
+        Configuration configuration = Configuration.fromRestParameters(request.getParameters());
+
+        processBookingSourceInfo(request.getReservationData().getBookingSource());
+        String confirmationCode = UUID.randomUUID().toString();
+
+        ConfirmBookingResponse response = new ConfirmBookingResponse();
+        SuccessfulBooking successfulBooking = new SuccessfulBooking();
+        successfulBooking.setBookingConfirmationCode(confirmationCode);
+        Ticket ticket = new Ticket();
+        QrTicket qrTicket = new QrTicket();
+        qrTicket.setTicketBarcode(confirmationCode + "_ticket");
+        ticket.setQrTicket(qrTicket);
+        successfulBooking.setBookingTicket(ticket);
+        response.setSuccessfulBooking(successfulBooking);
+        
+        exchange.getResponseHeaders().put(CONTENT_TYPE, "application/json; charset=utf-8");
+        exchange.getResponseSender().send(new Gson().toJson(response));
+        log.trace("Out ::confirmBooking");
+    }
+
+    /**
+     * Example code to get info about the booking initiator.
+     * Here you can see which data is available in each bookingSource.getSegment() case
+     * @param bookingSource bookinSource data structure that is provided in booking requests
+     */
+    void processBookingSourceInfo(BookingSource bookingSource) {
+        log.trace("Sales segment: {}",
+                bookingSource.getSegment().name());
+        log.trace("Booking channel: {} '{}'", bookingSource.getBookingChannel().getId(), bookingSource.getBookingChannel().getTitle());
+        switch (bookingSource.getSegment()) {
+            case OTA:
+                log.trace("OTA system: {}", bookingSource.getBookingChannel().getSystemType());
+                break;
+            case MARKETPLACE:
+                log.trace(
+                        "Reseller vendor: {} '{}' reg.no. {}",
+                        bookingSource.getMarketplaceVendor().getId(),
+                        bookingSource.getMarketplaceVendor().getTitle(),
+                        bookingSource.getMarketplaceVendor().getCompanyRegistrationNumber()
+                );
+                break;
+            case AGENT_AREA:
+                log.trace(
+                        "Booking agent: {} '{}' reg.no. {}",
+                        bookingSource.getBookingAgent().getId(),
+                        bookingSource.getBookingAgent().getTitle(),
+                        bookingSource.getBookingAgent().getCompanyRegistrationNumber()
+                );
+                break;
+            case DIRECT_OFFLINE:
+                log.trace(
+                        "Extranet user: {} '{}'",
+                        bookingSource.getExtranetUser().getEmail(),
+                        bookingSource.getExtranetUser().getFullName()
+                );
+                break;
+        }
+    }
+
 //    /**
 //     * Only implement this method if {@link PluginCapability#SUPPORTS_RESERVATIONS} is <b>NOT</b> among capabilities of your {@link PluginDefinition}.
 //     * Otherwise you are only required to implement both {@link #createReservation(ReservationRequest, StreamObserver)} and {@link
