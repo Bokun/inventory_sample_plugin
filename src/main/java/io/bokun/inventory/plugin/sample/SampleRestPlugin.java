@@ -405,66 +405,32 @@ public class SampleRestPlugin {
         }
     }
 
-//    /**
-//     * Only implement this method if {@link PluginCapability#SUPPORTS_RESERVATIONS} is <b>NOT</b> among capabilities of your {@link PluginDefinition}.
-//     * Otherwise you are only required to implement both {@link #createReservation(ReservationRequest, StreamObserver)} and {@link
-//     * #confirmBooking(ConfirmBookingRequest, StreamObserver)} separately; this method should remain empty or non-overridden.
-//     */
-//    @Override
-//    public void createAndConfirmBooking(CreateConfirmBookingRequest request, StreamObserver<ConfirmBookingResponse> responseObserver) {
-//        log.trace("In ::createAndConfirmBooking");          // should never happen
-//        throw new UnsupportedOperationException();
-//    }
-//
-//    /**
-//     * Once booked, a booking may be cancelled using booking ref number.
-//     * If your system does not support booking cancellation, one of the current workarounds is to create a cancellation policy (on the Bokun end)
-//     * which offers no refund. Then a cancellation does not have any monetary effect.
-//     */
-//    @Override
-//    public void cancelBooking(CancelBookingRequest request, StreamObserver<CancelBookingResponse> responseObserver) {
-//        log.trace("In ::cancelBooking");
-//        responseObserver.onNext(
-//                CancelBookingResponse.newBuilder()
-//                        .setSuccessfulCancellation(
-//                                SuccessfulCancellation.newBuilder()
-//                        )
-//                        .build()
-//        );
-//        responseObserver.onCompleted();
-//        log.trace("Out ::cancelBooking");
-//    }
-//
-//    /**
-//     * Holder of configuration parameter values.
-//     */
-//    public static final class Configuration {
-//
-//        static final String SAMPLE_API_SCHEME = "SAMPLE_API_SCHEME";
-//        static final String SAMPLE_API_HOST = "SAMPLE_API_HOST";
-//        static final String SAMPLE_API_PORT = "SAMPLE_API_PORT";
-//        static final String SAMPLE_API_PATH = "SAMPLE_API_PATH";
-//        static final String SAMPLE_API_USERNAME = "SAMPLE_API_USERNAME";
-//        static final String SAMPLE_API_PASSWORD = "SAMPLE_API_PASSWORD";
-//
-//        String scheme;
-//        String host;
-//        int port;
-//        String apiPath;
-//        String username;
-//        String password;
-//
-//        Configuration(Iterable<PluginConfigurationParameterValue> configParameters) {
-//            for (PluginConfigurationParameterValue parameterValue : configParameters) {
-//                switch (parameterValue.getName()) {
-//                    case SAMPLE_API_SCHEME: scheme = parameterValue.getValue(); break;
-//                    case SAMPLE_API_HOST: host = parameterValue.getValue(); break;
-//                    case SAMPLE_API_PORT: port = Integer.parseInt(parameterValue.getValue()); break;
-//                    case SAMPLE_API_PATH: apiPath = parameterValue.getValue(); break;
-//                    case SAMPLE_API_USERNAME: username = parameterValue.getValue(); break;
-//                    case SAMPLE_API_PASSWORD: password = parameterValue.getValue(); break;
-//                }
-//            }
-//        }
-//    }
+    /**
+     * Only implement this method if {@link PluginCapability#RESERVATIONS} is <b>NOT</b> among capabilities of your {@link PluginDefinition}.
+     * Otherwise you are only required to implement both {@link #createReservation(HttpServerExchange)} and {@link
+     * #confirmBooking(HttpServerExchange)} separately; this method should remain empty or non-overridden.
+     */
+    public void createAndConfirmBooking(HttpServerExchange exchange) {
+        log.trace("In ::createAndConfirmBooking");          // should never happen
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Once booked, a booking may be cancelled using booking ref number.
+     * If your system does not support booking cancellation, one of the current workarounds is to create a cancellation policy (on the Bokun end)
+     * which offers no refund. Then a cancellation does not have any monetary effect.
+     */
+    public void cancelBooking(HttpServerExchange exchange) {
+        log.trace("In ::cancelBooking");
+
+        CancelBookingRequest request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), CancelBookingRequest.class);
+        Configuration configuration = Configuration.fromRestParameters(request.getParameters());
+
+        CancelBookingResponse response = new CancelBookingResponse();
+        response.setSuccessfulCancellation(new SuccessfulCancellation());
+
+        exchange.getResponseHeaders().put(CONTENT_TYPE, "application/json; charset=utf-8");
+        exchange.getResponseSender().send(new Gson().toJson(response));
+        log.trace("Out ::cancelBooking");
+    }
 }

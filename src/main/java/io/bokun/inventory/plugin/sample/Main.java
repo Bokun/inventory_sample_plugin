@@ -221,6 +221,7 @@ public class Main {
                                     .post("/product/getAvailability", new BlockingHandler(server.restService::getProductAvailability))
                                     .post("/booking/reserve", new BlockingHandler(server.restService::createReservation))
                                     .post("/booking/confirm", new BlockingHandler(server.restService::confirmBooking))
+                                    .post("/booking/cancel", new BlockingHandler(server.restService::cancelBooking))
                     )
                     .build()
                     .start();
