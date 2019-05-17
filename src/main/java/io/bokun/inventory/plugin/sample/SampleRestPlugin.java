@@ -63,8 +63,8 @@ public class SampleRestPlugin {
      */
     public void getDefinition(@Nonnull HttpServerExchange exchange) {
         PluginDefinition definition = new PluginDefinition();
-        definition.setName("Sample plugin");
-        definition.setDescription("Provides availability and accepts bookings into <YourCompany> booking system");
+        definition.setName("Sample REST plugin");
+        definition.setDescription("Provides availability and accepts bookings into <YourCompany> booking system. Uses REST protocol");
 
         definition.getCapabilities().add(AVAILABILITY);
         definition.getCapabilities().add(RESERVATIONS);
