@@ -67,6 +67,8 @@ public class SampleRestPlugin {
         definition.setDescription("Provides availability and accepts bookings into <YourCompany> booking system. Uses REST protocol");
 
         definition.getCapabilities().add(AVAILABILITY);
+
+        // below entry should be commented out if the plugin only supports reservation & confirmation as a single step
         definition.getCapabilities().add(RESERVATIONS);
 
         // reuse parameter names from grpc
@@ -323,6 +325,7 @@ public class SampleRestPlugin {
      * reservation and confirmation, this method can be left empty or non-overridden.
      */
     public void createReservation(HttpServerExchange exchange) {
+        // body of this method can be left empty if reserve & confirm is only supported as a single step
         log.trace("In ::createReservation");
 
         ReservationResponse response = new ReservationResponse();
@@ -343,6 +346,7 @@ public class SampleRestPlugin {
      * reservation and confirmation, this method can be left empty or non-overridden.
      */
     public void confirmBooking(HttpServerExchange exchange) {
+        // body of this method can be left empty if reserve & confirm is only supported as a single step
         log.trace("In ::confirmBooking");
 
         ConfirmBookingRequest request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), ConfirmBookingRequest.class);
@@ -413,6 +417,27 @@ public class SampleRestPlugin {
     public void createAndConfirmBooking(HttpServerExchange exchange) {
         log.trace("In ::createAndConfirmBooking");          // should never happen
         throw new UnsupportedOperationException();
+
+// lines below should be uncommented if this plugin supports single reserve & confirm step
+//        CreateConfirmBookingRequest request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), CreateConfirmBookingRequest.class);
+//        Configuration configuration = Configuration.fromRestParameters(request.getParameters());
+//
+//        processBookingSourceInfo(request.getReservationData().getBookingSource());
+//        String confirmationCode = UUID.randomUUID().toString();
+//
+//        ConfirmBookingResponse response = new ConfirmBookingResponse();
+//        SuccessfulBooking successfulBooking = new SuccessfulBooking();
+//        successfulBooking.setBookingConfirmationCode(confirmationCode);
+//        Ticket ticket = new Ticket();
+//        QrTicket qrTicket = new QrTicket();
+//        qrTicket.setTicketBarcode(confirmationCode + "_ticket");
+//        ticket.setQrTicket(qrTicket);
+//        successfulBooking.setBookingTicket(ticket);
+//        response.setSuccessfulBooking(successfulBooking);
+//
+//        exchange.getResponseHeaders().put(CONTENT_TYPE, "application/json; charset=utf-8");
+//        exchange.getResponseSender().send(new Gson().toJson(response));
+//        log.trace("Out ::createAndConfirmBooking");
     }
 
     /**
