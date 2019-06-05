@@ -143,7 +143,7 @@ public class SampleRestPlugin {
         {
             PricingCategory child = new PricingCategory();
             child.setId("CHD");
-            child.setLabel("Adult");
+            child.setLabel("Child");
             basicProductInfo.getPricingCategories().add(child);
         }
 

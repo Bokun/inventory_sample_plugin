@@ -225,6 +225,7 @@ public class Main {
                     )
                     .build()
                     .start();
+            log.info("Started REST service on port {}", server.port);
         }
     }
 
