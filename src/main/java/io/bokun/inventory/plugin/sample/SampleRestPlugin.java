@@ -184,7 +184,10 @@ public class SampleRestPlugin {
         Rate rate = new Rate();
         rate.setId("standard");
         rate.setLabel("Standard");
-        description.setRates(ImmutableList.of(rate));
+        Rate rate2 = new Rate();
+        rate2.setId("luxury");
+        rate2.setLabel("Luxury");
+        description.setRates(ImmutableList.of(rate, rate2));
         description.setBookingType(BookingType.DATE_AND_TIME);
         description.setProductCategory(ProductCategory.ACTIVITIES);
         description.setTicketSupport(
@@ -270,20 +273,20 @@ public class SampleRestPlugin {
         ProductAvailabilityRequest request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), ProductAvailabilityRequest.class);
         Configuration configuration = Configuration.fromRestParameters(request.getParameters());
 
-        ProductAvailabilityWithRatesResponse response = new ProductAvailabilityWithRatesResponse();
-        response.setCapacity(10);
+        ProductAvailabilityWithRatesResponse response1 = new ProductAvailabilityWithRatesResponse();
+        response1.setCapacity(10);
 
         LocalDate tomorrow = LocalDate.now().plusDays(1L);
         DateYMD tomorrowDate = new DateYMD();
         tomorrowDate.setYear(tomorrow.getYear());
         tomorrowDate.setMonth(tomorrow.getMonthValue());
         tomorrowDate.setDay(tomorrow.getDayOfMonth());
-        response.setDate(tomorrowDate);
+        response1.setDate(tomorrowDate);
 
         Time tomorrowTime = new Time();
         tomorrowTime.setHour(8);
         tomorrowTime.setMinute(15);
-        response.setTime(tomorrowTime);
+        response1.setTime(tomorrowTime);
 
         RateWithPrice rate = new RateWithPrice();
         rate.setRateId("standard");
@@ -309,10 +312,42 @@ public class SampleRestPlugin {
             pricePerPerson.getPricingCategoryWithPrice().add(childCategoryPrice);
         }
         rate.setPricePerPerson(pricePerPerson);
-        response.setRates(ImmutableList.of(rate));
+        response1.setRates(ImmutableList.of(rate));
+
+        ProductAvailabilityWithRatesResponse response2 = new ProductAvailabilityWithRatesResponse();
+        response2.setCapacity(100);
+        response2.setDate(tomorrowDate);
+        response2.setTime(tomorrowTime);
+
+        RateWithPrice rate2 = new RateWithPrice();
+        rate2.setRateId("luxury");
+
+        PricePerPerson pricePerPerson2 = new PricePerPerson();
+        pricePerPerson2.setPricingCategoryWithPrice(new ArrayList<>());
+        {
+            PricingCategoryWithPrice adultCategoryPrice2 = new PricingCategoryWithPrice();
+            adultCategoryPrice2.setPricingCategoryId("ADT");
+            Price adultPrice2 = new Price();
+            adultPrice2.setAmount("1000");
+            adultPrice2.setCurrency("EUR");
+            adultCategoryPrice2.setPrice(adultPrice2);
+            pricePerPerson2.getPricingCategoryWithPrice().add(adultCategoryPrice2);
+        }
+        {
+            PricingCategoryWithPrice childCategoryPrice2 = new PricingCategoryWithPrice();
+            childCategoryPrice2.setPricingCategoryId("CHD");
+            Price childPrice2 = new Price();
+            childPrice2.setAmount("100");
+            childPrice2.setCurrency("EUR");
+            childCategoryPrice2.setPrice(childPrice2);
+            pricePerPerson2.getPricingCategoryWithPrice().add(childCategoryPrice2);
+        }
+        rate2.setPricePerPerson(pricePerPerson2);
+        response2.setRates(ImmutableList.of(rate2));
+
 
         exchange.getResponseHeaders().put(CONTENT_TYPE, "application/json; charset=utf-8");
-        exchange.getResponseSender().send(new Gson().toJson(ImmutableList.of(response)));
+        exchange.getResponseSender().send(new Gson().toJson(ImmutableList.of(response1, response2)));
         log.trace("Out ::getProductAvailability");
     }
 
