@@ -181,10 +181,15 @@ public class SampleRestPlugin {
             description.getPricingCategories().add(child);
         }
 
-        Rate rate = new Rate();
-        rate.setId("standard");
-        rate.setLabel("Standard");
-        description.setRates(ImmutableList.of(rate));
+        description.setRates(ImmutableList.of(
+//                generateRate("standard"),
+                generateRate("r1"),
+                generateRate("r2"),
+                generateRate("r3"),
+                generateRate("r4"),
+                generateRate("r5")));
+
+
         description.setBookingType(BookingType.DATE_AND_TIME);
         description.setProductCategory(ProductCategory.ACTIVITIES);
         description.setTicketSupport(
@@ -198,7 +203,18 @@ public class SampleRestPlugin {
         Time startTime = new Time();
         startTime.setHour(8);
         startTime.setMinute(15);
-        description.setStartTimes(ImmutableList.of(startTime));
+
+        Time startTime9 = new Time();
+        startTime9.setHour(9);
+        startTime9.setMinute(0);
+
+        Time startTime12 = new Time();
+        startTime12.setHour(12);
+        startTime12.setMinute(0);
+        description.setStartTimes(ImmutableList.of(startTime, startTime9, startTime12));
+
+
+//        description.setStartTimes(ImmutableList.of(startTime));
 
         {                                                                               // opening hours block
             OpeningHoursWeekday openingHoursMonday = new OpeningHoursWeekday();
@@ -237,6 +253,13 @@ public class SampleRestPlugin {
         exchange.getResponseSender().send(new Gson().toJson(description));
     }
 
+    private Rate generateRate(String str) {
+        Rate rate = new Rate();
+        rate.setId(str);
+        rate.setLabel(str);
+        return rate;
+    }
+
     /**
      * A set of product ids provided, return their availability over given date range ("shallow" call).
      * This will return a subset of product IDs passed on via ProductAvailabilityRequest.
@@ -270,51 +293,34 @@ public class SampleRestPlugin {
         ProductAvailabilityRequest request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), ProductAvailabilityRequest.class);
         Configuration configuration = Configuration.fromRestParameters(request.getParameters());
 
-        ProductAvailabilityWithRatesResponse response = new ProductAvailabilityWithRatesResponse();
-        response.setCapacity(10);
+//        ProductAvailabilityWithRatesResponse av1 = generateAvailability(8, 15, );
 
-        LocalDate tomorrow = LocalDate.now().plusDays(1L);
-        DateYMD tomorrowDate = new DateYMD();
-        tomorrowDate.setYear(tomorrow.getYear());
-        tomorrowDate.setMonth(tomorrow.getMonthValue());
-        tomorrowDate.setDay(tomorrow.getDayOfMonth());
-        response.setDate(tomorrowDate);
 
-        Time tomorrowTime = new Time();
-        tomorrowTime.setHour(8);
-        tomorrowTime.setMinute(15);
-        response.setTime(tomorrowTime);
 
-        RateWithPrice rate = new RateWithPrice();
-        rate.setRateId("standard");
+        ProductAvailabilityWithRatesResponse avail1 = MockHelper.generateAvailability(8, 45, ImmutableList.of(MockHelper.generateRate("r4")));
+        ProductAvailabilityWithRatesResponse avail2 = MockHelper.generateAvailability(9, 15, ImmutableList.of(MockHelper.generateRate("r2")));
+        ProductAvailabilityWithRatesResponse avail3 = MockHelper.generateAvailability(9, 50, ImmutableList.of(MockHelper.generateRate("r5")));
+        ProductAvailabilityWithRatesResponse avail4 = MockHelper.generateAvailability(9, 0, ImmutableList.of(MockHelper.generateRate("r1"), MockHelper.generateRate("r3")));
+//        ProductAvailabilityWithRatesResponse avail5 = MockHelper.generateAvailability(11, 15, ImmutableList.of(MockHelper.generateRate("r2")));
+        ProductAvailabilityWithRatesResponse avail5 = MockHelper.generateAvailability(11, 15, ImmutableList.of(MockHelper.generateRate("r1"), MockHelper.generateRate("r2")));
+//        ProductAvailabilityWithRatesResponse avail6 = MockHelper.generateAvailability(11, 50, ImmutableList.of(MockHelper.generateRate("r5")));
+        ProductAvailabilityWithRatesResponse avail6 = MockHelper.generateAvailability(11, 50, ImmutableList.of(MockHelper.generateRate("r1"), MockHelper.generateRate("r5")));
 
-        PricePerPerson pricePerPerson = new PricePerPerson();
-        pricePerPerson.setPricingCategoryWithPrice(new ArrayList<>());
-        {
-            PricingCategoryWithPrice adultCategoryPrice = new PricingCategoryWithPrice();
-            adultCategoryPrice.setPricingCategoryId("ADT");
-            Price adultPrice = new Price();
-            adultPrice.setAmount("100");
-            adultPrice.setCurrency("EUR");
-            adultCategoryPrice.setPrice(adultPrice);
-            pricePerPerson.getPricingCategoryWithPrice().add(adultCategoryPrice);
-        }
-        {
-            PricingCategoryWithPrice childCategoryPrice = new PricingCategoryWithPrice();
-            childCategoryPrice.setPricingCategoryId("CHD");
-            Price childPrice = new Price();
-            childPrice.setAmount("10");
-            childPrice.setCurrency("EUR");
-            childCategoryPrice.setPrice(childPrice);
-            pricePerPerson.getPricingCategoryWithPrice().add(childCategoryPrice);
-        }
-        rate.setPricePerPerson(pricePerPerson);
-        response.setRates(ImmutableList.of(rate));
 
         exchange.getResponseHeaders().put(CONTENT_TYPE, "application/json; charset=utf-8");
-        exchange.getResponseSender().send(new Gson().toJson(ImmutableList.of(response)));
+        exchange.getResponseSender().send(new Gson().toJson(ImmutableList.of(avail1,
+                avail1,
+                avail2,
+                avail3,
+                avail4,
+                avail5,
+                avail6
+
+        )));
         log.trace("Out ::getProductAvailability");
     }
+
+
 
     /**
      * This call secures necessary resource(s), such as activity time slot which can later become a booking. The reservation should be held for some
