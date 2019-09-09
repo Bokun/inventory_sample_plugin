@@ -217,7 +217,7 @@ public class Main {
                                     .get("/plugin/definition", server.restService::getDefinition)
                                     .post("/product/search", new BlockingHandler(server.restService::searchProducts))
                                     .post("/product/getById", new BlockingHandler(server.restService::getProductById))
-                                    .post("/products/getAvailable", new BlockingHandler(server.restService::getAvailableProducts))
+                                    .post("/product/getAvailable", new BlockingHandler(server.restService::getAvailableProducts))
                                     .post("/product/getAvailability", new BlockingHandler(server.restService::getProductAvailability))
                                     .post("/booking/reserve", new BlockingHandler(server.restService::createReservation))
                                     .post("/booking/confirm", new BlockingHandler(server.restService::confirmBooking))
