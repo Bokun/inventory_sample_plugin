@@ -341,31 +341,39 @@ public class SampleGrpcPlugin extends PluginApiGrpc.PluginApiImplBase {
 
     /**
      * Once reserved, proceed with booking. This will be called in case if reservation has succeeded.
-     *
-     * Only implement this method if {@link PluginCapability#SUPPORTS_RESERVATIONS} is among capabilities of your {@link PluginDefinition}.
-     * Otherwise you are only required to implement {@link #createAndConfirmBooking(CreateConfirmBookingRequest, StreamObserver)} which does both
-     * reservation and confirmation, this method can be left empty or non-overridden.
      */
     @Override
     public void confirmBooking(ConfirmBookingRequest request, StreamObserver<ConfirmBookingResponse> responseObserver) {
         log.trace("In ::confirmBooking");
         processBookingSourceInfo(request.getReservationData().getBookingSource());
         String confirmationCode = UUID.randomUUID().toString();
+
+        List<TicketPerPricingCategory> tickets = new ArrayList<>();
+        for (Reservation reservation : request.getReservationData().getReservationsList()) {
+            for (Passenger passenger : reservation.getPassengersList()) {
+                tickets.add(TicketPerPricingCategory.newBuilder()
+                        .setPricingCategory(passenger.getPricingCategoryId())
+                        .setTicket(Ticket.newBuilder().setQrTicket(QrTicket.newBuilder().setTicketBarcode("abc").build()).build()).build());
+
+            }
+        }
+
+        TicketsPerPricingCategory ticketsPerPassenger = TicketsPerPricingCategory.newBuilder()
+                .addAllTickets(tickets)
+                .build();
+
         responseObserver.onNext(
                 ConfirmBookingResponse.newBuilder()
                         .setSuccessfulBooking(
                                 SuccessfulBooking.newBuilder()
                                         .setBookingConfirmationCode(confirmationCode)
-                                        .setBookingTicket(
-                                                Ticket.newBuilder()
-                                                        .setQrTicket(
-                                                                QrTicket.newBuilder()
-                                                                        .setTicketBarcode(confirmationCode + "_ticket")
-                                                        )
-                                        )
+                                        .setTicketsPerPassenger(ticketsPerPassenger)
                         )
                         .build()
         );
+
+
+
         responseObserver.onCompleted();
         log.trace("Out ::confirmBooking");
     }
