@@ -244,6 +244,7 @@ public class Main {
             Binder binder = binder();
             bindProperties(binder, guiceSpecificVars);
             binder.bind(SampleGrpcPlugin.class).in(SINGLETON);
+            binder.bind(SampleRestPlugin.class).in(SINGLETON);
             binder.bind(Main.class).in(SINGLETON);
         }
     }
