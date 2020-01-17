@@ -40,6 +40,7 @@ public class SampleGrpcPlugin extends PluginApiGrpc.PluginApiImplBase {
     public SampleGrpcPlugin() {
         this.client = new OkHttpClient();
         client.setReadTimeout(DEFAULT_READ_TIMEOUT, SECONDS);
+        log.info("Starting GRPC plugin");
     }
 
     /**

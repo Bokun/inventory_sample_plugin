@@ -38,6 +38,7 @@ public class SampleRestPlugin {
     public SampleRestPlugin() {
         this.client = new OkHttpClient();
         client.setReadTimeout(DEFAULT_READ_TIMEOUT, SECONDS);
+        log.info("Starting REST plugin");
     }
 
     // helper method to express string as required string parameter structure, required by the REST API
@@ -62,6 +63,7 @@ public class SampleRestPlugin {
      * Responds to <tt>/plugin/definition</tt> by sending back simple plugin definition JSON object.
      */
     public void getDefinition(@Nonnull HttpServerExchange exchange) {
+        log.info("get definition from REST plugin");
         PluginDefinition definition = new PluginDefinition();
         definition.setName("Sample REST plugin");
         definition.setDescription("Provides availability and accepts bookings into <YourCompany> booking system. Uses REST protocol");

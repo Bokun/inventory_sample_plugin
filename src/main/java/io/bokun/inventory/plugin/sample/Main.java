@@ -82,6 +82,7 @@ public class Main {
         this.port = port;
         this.grpcService = grpcService;
         this.restService = restService;
+        log.info("sample main port: {}, grpcService: {}, restService: {}", port, grpcService, restService);
     }
 
     /**
@@ -90,6 +91,7 @@ public class Main {
      * @throws IOException if specified port can not be bound.
      */
     private void start() throws IOException {
+        log.info("Start the system...");
         Map<String, String> environmentVariables = System.getenv();
         ServerBuilder<?> serverBuilder;
 
