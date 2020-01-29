@@ -1,6 +1,7 @@
 package io.bokun.inventory.plugin.sample;
 
 import java.io.*;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.file.*;
 import java.util.*;
@@ -260,7 +261,7 @@ public class Main {
         }
         if (isRest) {
             Undertow.builder()
-                    .addHttpListener(server.port, "localhost")
+                    .addHttpListener(server.port, InetAddress.getLocalHost().getHostAddress())
                     .setHandler(
                             new RoutingHandler()
                                     .get("/plugin/definition", server.restService::getDefinition)
