@@ -23,9 +23,9 @@ import static java.util.concurrent.TimeUnit.*;
  *
  * @author Mindaugas Žakšauskas
  */
-public class ViatorRestPlugin {
+public class SampleRestPlugin {
 
-    private static final Logger log = LoggerFactory.getLogger(ViatorRestPlugin.class);
+    private static final Logger log = LoggerFactory.getLogger(SampleRestPlugin.class);
 
     /**
      * Default OkHttp read timeout: how long to wait (in seconds) for the backend to respond to requests.
@@ -35,7 +35,7 @@ public class ViatorRestPlugin {
     private final OkHttpClient client;
 
     @Inject
-    public ViatorRestPlugin() {
+    public SampleRestPlugin() {
         this.client = new OkHttpClient();
         client.setReadTimeout(DEFAULT_READ_TIMEOUT, SECONDS);
     }
@@ -63,7 +63,7 @@ public class ViatorRestPlugin {
      */
     public void getDefinition(@Nonnull HttpServerExchange exchange) {
         PluginDefinition definition = new PluginDefinition();
-        definition.setName("Viator REST plugin");
+        definition.setName("Sample REST plugin");
         definition.setDescription("Provides availability and accepts bookings into <YourCompany> booking system. Uses REST protocol");
 
         definition.getCapabilities().add(AVAILABILITY);
@@ -72,12 +72,12 @@ public class ViatorRestPlugin {
         definition.getCapabilities().add(RESERVATIONS);
 
         // reuse parameter names from grpc
-        definition.getParameters().add(asRequiredStringParameter(Configuration.VIATOR_API_SCHEME));    // e.g. https
-        definition.getParameters().add(asRequiredStringParameter(Configuration.VIATOR_API_HOST));      // e.g. your-api.your-company.com
-        definition.getParameters().add(asRequiredLongParameter(Configuration.VIATOR_API_PORT));        // e.g. 443
-        definition.getParameters().add(asRequiredStringParameter(Configuration.VIATOR_API_PATH));      // e.g. /api/1
-        definition.getParameters().add(asRequiredStringParameter(Configuration.VIATOR_API_USERNAME));
-        definition.getParameters().add(asRequiredStringParameter(Configuration.VIATOR_API_PASSWORD));
+        definition.getParameters().add(asRequiredStringParameter(Configuration.SAMPLE_API_SCHEME));    // e.g. https
+        definition.getParameters().add(asRequiredStringParameter(Configuration.SAMPLE_API_HOST));      // e.g. your-api.your-company.com
+        definition.getParameters().add(asRequiredLongParameter(Configuration.SAMPLE_API_PORT));        // e.g. 443
+        definition.getParameters().add(asRequiredStringParameter(Configuration.SAMPLE_API_PATH));      // e.g. /api/1
+        definition.getParameters().add(asRequiredStringParameter(Configuration.SAMPLE_API_USERNAME));
+        definition.getParameters().add(asRequiredStringParameter(Configuration.SAMPLE_API_PASSWORD));
 
         exchange.getResponseHeaders().put(CONTENT_TYPE, "application/json; charset=utf-8");
         exchange.getResponseSender().send(new Gson().toJson(definition));
