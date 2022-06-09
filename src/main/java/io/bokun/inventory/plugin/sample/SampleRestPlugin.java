@@ -71,6 +71,9 @@ public class SampleRestPlugin {
         // below entry should be commented out if the plugin only supports reservation & confirmation as a single step
         definition.getCapabilities().add(RESERVATIONS);
 
+        definition.getCapabilities().add(RESERVATION_CANCELLATION);
+        definition.getCapabilities().add(AMENDMENT);
+
         // reuse parameter names from grpc
         definition.getParameters().add(asRequiredStringParameter(Configuration.SAMPLE_API_SCHEME));    // e.g. https
         definition.getParameters().add(asRequiredStringParameter(Configuration.SAMPLE_API_HOST));      // e.g. your-api.your-company.com
@@ -84,48 +87,14 @@ public class SampleRestPlugin {
     }
 
     /**
-     * Helper method which creates {@link HttpUrl.Builder} based on configuration (scheme/host/port/path).
-     *
-     * @param configuration configuration to use to create OkHttp url builder.
-     * @return url builder which is ready to use.
-     */
-    @Nonnull
-    private HttpUrl.Builder getUrlBuilder(@Nonnull Configuration configuration) {
-        return new HttpUrl.Builder()
-                .scheme(configuration.scheme)
-                .host(configuration.host)
-                .port(configuration.port)
-                .encodedPath(configuration.apiPath);
-    }
-
-    /**
      * This method should list all your products
      */
     public void searchProducts(@Nonnull HttpServerExchange exchange) {
         SearchProductRequest request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), SearchProductRequest.class);
         Configuration configuration = Configuration.fromRestParameters(request.getParameters());
 
-        // Let's say we are about to call http(s)://yoururl/product to get a list of products
-        HttpUrl.Builder urlBuilder = getUrlBuilder(configuration)
-                        .addPathSegment("product");
-        // Create HTTP get call using basic authorization, taking username/password from the same configuration
-        Request getRequest = new Request.Builder()
-                .addHeader("Content-Type", "application/json")
-                .addHeader("Authorization", Credentials.basic(configuration.username, configuration.password))
-                .url(urlBuilder.build())
-                .build();
-
-        String httpResponseBody;
-        try {
-            client.newCall(getRequest)
-                    .execute()
-                    .body().string();
-        } catch (IOException e) {
-            log.error("Error calling request {}", getRequest, e);
-            exchange.setStatusCode(500);
-            exchange.getResponseSender().send("Error: " + e.getMessage());
-            return;
-        }
+        // At this point you might want to call your external system to do the actual search and return data back.
+        // Code below just provides some mocks.
 
         // Do something with httpResponseBody, e.g. convert this JSON into POJO and convert that POJO into BasicProductInfo
         // Don't forget to filter them by country and city, based on request parameters.
@@ -196,8 +165,8 @@ public class SampleRestPlugin {
         description.setCountries(ImmutableList.of("GB"));
 
         Time startTime = new Time();
-        startTime.setHour(8);
-        startTime.setMinute(15);
+        startTime.setHour(13);
+        startTime.setMinute(0);
         description.setStartTimes(ImmutableList.of(startTime));
 
         {                                                                               // opening hours block
@@ -247,6 +216,9 @@ public class SampleRestPlugin {
         ProductsAvailabilityRequest request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), ProductsAvailabilityRequest.class);
         Configuration configuration = Configuration.fromRestParameters(request.getParameters());
 
+        // At this point you might want to call your external system to do the actual search and return data back.
+        // Code below just provides some mocks.
+
         if (!request.getExternalProductIds().contains("123")) {
             throw new IllegalStateException("Previous call only returned product having id=123");
         }
@@ -270,49 +242,56 @@ public class SampleRestPlugin {
         ProductAvailabilityRequest request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), ProductAvailabilityRequest.class);
         Configuration configuration = Configuration.fromRestParameters(request.getParameters());
 
-        ProductAvailabilityWithRatesResponse response = new ProductAvailabilityWithRatesResponse();
-        response.setCapacity(10);
+        // At this point you might want to call your external system to do the actual search and return data back.
+        // Code below just provides some mocks.
 
-        LocalDate tomorrow = LocalDate.now().plusDays(1L);
-        DateYMD tomorrowDate = new DateYMD();
-        tomorrowDate.setYear(tomorrow.getYear());
-        tomorrowDate.setMonth(tomorrow.getMonthValue());
-        tomorrowDate.setDay(tomorrow.getDayOfMonth());
-        response.setDate(tomorrowDate);
+        List<ProductAvailabilityWithRatesResponse> l = new ArrayList<>();
+        for (int i=0; i<=1; i++) {
+            ProductAvailabilityWithRatesResponse response = new ProductAvailabilityWithRatesResponse();
+            response.setCapacity(100);
 
-        Time tomorrowTime = new Time();
-        tomorrowTime.setHour(8);
-        tomorrowTime.setMinute(15);
-        response.setTime(tomorrowTime);
+            LocalDate date = LocalDate.now().plusDays(i);
+            DateYMD tomorrowDate = new DateYMD();
+            tomorrowDate.setYear(date.getYear());
+            tomorrowDate.setMonth(date.getMonthValue());
+            tomorrowDate.setDay(date.getDayOfMonth());
+            response.setDate(tomorrowDate);
 
-        RateWithPrice rate = new RateWithPrice();
-        rate.setRateId("standard");
+            Time tomorrowTime = new Time();
+            tomorrowTime.setHour(13);
+            tomorrowTime.setMinute(00);
+            response.setTime(tomorrowTime);
 
-        PricePerPerson pricePerPerson = new PricePerPerson();
-        pricePerPerson.setPricingCategoryWithPrice(new ArrayList<>());
-        {
-            PricingCategoryWithPrice adultCategoryPrice = new PricingCategoryWithPrice();
-            adultCategoryPrice.setPricingCategoryId("ADT");
-            Price adultPrice = new Price();
-            adultPrice.setAmount("100");
-            adultPrice.setCurrency("EUR");
-            adultCategoryPrice.setPrice(adultPrice);
-            pricePerPerson.getPricingCategoryWithPrice().add(adultCategoryPrice);
+            RateWithPrice rate = new RateWithPrice();
+            rate.setRateId("standard");
+
+            PricePerPerson pricePerPerson = new PricePerPerson();
+            pricePerPerson.setPricingCategoryWithPrice(new ArrayList<>());
+            {
+                PricingCategoryWithPrice adultCategoryPrice = new PricingCategoryWithPrice();
+                adultCategoryPrice.setPricingCategoryId("ADT");
+                Price adultPrice = new Price();
+                adultPrice.setAmount("100");
+                adultPrice.setCurrency("EUR");
+                adultCategoryPrice.setPrice(adultPrice);
+                pricePerPerson.getPricingCategoryWithPrice().add(adultCategoryPrice);
+            }
+            {
+                PricingCategoryWithPrice childCategoryPrice = new PricingCategoryWithPrice();
+                childCategoryPrice.setPricingCategoryId("CHD");
+                Price childPrice = new Price();
+                childPrice.setAmount("10");
+                childPrice.setCurrency("EUR");
+                childCategoryPrice.setPrice(childPrice);
+                pricePerPerson.getPricingCategoryWithPrice().add(childCategoryPrice);
+            }
+            rate.setPricePerPerson(pricePerPerson);
+            response.setRates(ImmutableList.of(rate));
+            l.add(response);
         }
-        {
-            PricingCategoryWithPrice childCategoryPrice = new PricingCategoryWithPrice();
-            childCategoryPrice.setPricingCategoryId("CHD");
-            Price childPrice = new Price();
-            childPrice.setAmount("10");
-            childPrice.setCurrency("EUR");
-            childCategoryPrice.setPrice(childPrice);
-            pricePerPerson.getPricingCategoryWithPrice().add(childCategoryPrice);
-        }
-        rate.setPricePerPerson(pricePerPerson);
-        response.setRates(ImmutableList.of(rate));
 
         exchange.getResponseHeaders().put(CONTENT_TYPE, "application/json; charset=utf-8");
-        exchange.getResponseSender().send(new Gson().toJson(ImmutableList.of(response)));
+        exchange.getResponseSender().send(new Gson().toJson(l));
         log.trace("Out ::getProductAvailability");
     }
 
@@ -328,6 +307,9 @@ public class SampleRestPlugin {
         // body of this method can be left empty if reserve & confirm is only supported as a single step
         log.trace("In ::createReservation");
 
+        // At this point you might want to call your external system to do the actual reservation and return data back.
+        // Code below just provides some mocks.
+
         ReservationResponse response = new ReservationResponse();
         SuccessfulReservation reservation = new SuccessfulReservation();
         reservation.setReservationConfirmationCode(UUID.randomUUID().toString());
@@ -336,6 +318,27 @@ public class SampleRestPlugin {
         exchange.getResponseHeaders().put(CONTENT_TYPE, "application/json; charset=utf-8");
         exchange.getResponseSender().send(new Gson().toJson(response));
         log.trace("Out ::createReservation");
+    }
+
+    /**
+     * This call cancels existing reservation -- if the booking was not yet confirmed.
+     *
+     * Only implement this method if {@link PluginCapability#RESERVATIONS} and {@link PluginCapability#RESERVATION_CANCELLATION} are among
+     * capabilities of your {@link PluginDefinition}.
+     */
+    public void cancelReservation(HttpServerExchange exchange) {
+        log.trace("In ::cancelReservation");
+
+        // At this point you might want to call your external system to do the actual reservation and return data back.
+        // Code below just provides some mocks.
+
+        CancelReservationResponse response = new CancelReservationResponse();
+        SuccessfulReservationCancellation greatSuccess = new SuccessfulReservationCancellation();
+        response.setSuccessfulReservationCancellation(greatSuccess);
+
+        exchange.getResponseHeaders().put(CONTENT_TYPE, "application/json; charset=utf-8");
+        exchange.getResponseSender().send(new Gson().toJson(response));
+        log.trace("Out ::cancelReservation");
     }
 
     /**
@@ -351,6 +354,9 @@ public class SampleRestPlugin {
 
         ConfirmBookingRequest request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), ConfirmBookingRequest.class);
         Configuration configuration = Configuration.fromRestParameters(request.getParameters());
+
+        // At this point you might want to call your external system to do the actual confirmation and return data back.
+        // Code below just provides some mocks.
 
         processBookingSourceInfo(request.getReservationData().getBookingSource());
         String confirmationCode = UUID.randomUUID().toString();
@@ -368,6 +374,31 @@ public class SampleRestPlugin {
         exchange.getResponseHeaders().put(CONTENT_TYPE, "application/json; charset=utf-8");
         exchange.getResponseSender().send(new Gson().toJson(response));
         log.trace("Out ::confirmBooking");
+    }
+
+    public void amendBooking(HttpServerExchange exchange) {
+        log.trace("In ::amendBooking");
+
+        AmendBookingRequest request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), AmendBookingRequest.class);
+        Configuration configuration = Configuration.fromRestParameters(request.getParameters());
+
+        // At this point you might want to call your external system to do the actual amendment and return data back.
+        // Code below just provides some mocks.
+
+        processBookingSourceInfo(request.getReservationData().getBookingSource());
+
+        AmendBookingResponse response = new AmendBookingResponse();
+        SuccessfulAmendment successfulAmendment = new SuccessfulAmendment();
+        Ticket ticket = new Ticket();
+        QrTicket qrTicket = new QrTicket();
+        qrTicket.setTicketBarcode(request.getBookingConfirmationCode() + "_ticket_amended");
+        ticket.setQrTicket(qrTicket);
+        successfulAmendment.setBookingTicket(ticket);
+        response.setSuccessfulAmendment(successfulAmendment);
+
+        exchange.getResponseHeaders().put(CONTENT_TYPE, "application/json; charset=utf-8");
+        exchange.getResponseSender().send(new Gson().toJson(response));
+        log.trace("Out ::amendBooking");
     }
 
     /**
@@ -416,28 +447,30 @@ public class SampleRestPlugin {
      */
     public void createAndConfirmBooking(HttpServerExchange exchange) {
         log.trace("In ::createAndConfirmBooking");          // should never happen
-        throw new UnsupportedOperationException();
+//        throw new UnsupportedOperationException();
 
-// lines below should be uncommented if this plugin supports single reserve & confirm step
-//        CreateConfirmBookingRequest request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), CreateConfirmBookingRequest.class);
-//        Configuration configuration = Configuration.fromRestParameters(request.getParameters());
-//
-//        processBookingSourceInfo(request.getReservationData().getBookingSource());
-//        String confirmationCode = UUID.randomUUID().toString();
-//
-//        ConfirmBookingResponse response = new ConfirmBookingResponse();
-//        SuccessfulBooking successfulBooking = new SuccessfulBooking();
-//        successfulBooking.setBookingConfirmationCode(confirmationCode);
-//        Ticket ticket = new Ticket();
-//        QrTicket qrTicket = new QrTicket();
-//        qrTicket.setTicketBarcode(confirmationCode + "_ticket");
-//        ticket.setQrTicket(qrTicket);
-//        successfulBooking.setBookingTicket(ticket);
-//        response.setSuccessfulBooking(successfulBooking);
-//
-//        exchange.getResponseHeaders().put(CONTENT_TYPE, "application/json; charset=utf-8");
-//        exchange.getResponseSender().send(new Gson().toJson(response));
-//        log.trace("Out ::createAndConfirmBooking");
+        CreateConfirmBookingRequest request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), CreateConfirmBookingRequest.class);
+        Configuration configuration = Configuration.fromRestParameters(request.getParameters());
+
+        // At this point you might want to call your external system to do the actual reserve&confirm and return data back.
+        // Code below just provides some mocks.
+
+        processBookingSourceInfo(request.getReservationData().getBookingSource());
+        String confirmationCode = UUID.randomUUID().toString();
+
+        ConfirmBookingResponse response = new ConfirmBookingResponse();
+        SuccessfulBooking successfulBooking = new SuccessfulBooking();
+        successfulBooking.setBookingConfirmationCode(confirmationCode);
+        Ticket ticket = new Ticket();
+        QrTicket qrTicket = new QrTicket();
+        qrTicket.setTicketBarcode(confirmationCode + "_ticket");
+        ticket.setQrTicket(qrTicket);
+        successfulBooking.setBookingTicket(ticket);
+        response.setSuccessfulBooking(successfulBooking);
+
+        exchange.getResponseHeaders().put(CONTENT_TYPE, "application/json; charset=utf-8");
+        exchange.getResponseSender().send(new Gson().toJson(response));
+        log.trace("Out ::createAndConfirmBooking");
     }
 
     /**
@@ -450,6 +483,9 @@ public class SampleRestPlugin {
 
         CancelBookingRequest request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), CancelBookingRequest.class);
         Configuration configuration = Configuration.fromRestParameters(request.getParameters());
+
+        // At this point you might want to call your external system to do the actual booking cancellation and return data back.
+        // Code below just provides some mocks.
 
         CancelBookingResponse response = new CancelBookingResponse();
         response.setSuccessfulCancellation(new SuccessfulCancellation());
