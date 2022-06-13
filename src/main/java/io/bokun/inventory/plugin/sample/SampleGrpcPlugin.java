@@ -1,6 +1,5 @@
 package io.bokun.inventory.plugin.sample;
 
-import java.io.*;
 import java.time.*;
 import java.util.*;
 
@@ -9,10 +8,10 @@ import javax.annotation.*;
 import com.google.common.collect.*;
 import com.google.inject.*;
 import com.squareup.okhttp.*;
-import io.bokun.inventory.common.api.grpc.*;
 import io.bokun.inventory.common.api.grpc.Date;
-import io.bokun.inventory.plugin.api.grpc.*;
+import io.bokun.inventory.common.api.grpc.*;
 import io.bokun.inventory.plugin.api.grpc.PluginConfigurationParameter;
+import io.bokun.inventory.plugin.api.grpc.*;
 import io.grpc.stub.*;
 import org.slf4j.*;
 
@@ -81,7 +80,7 @@ public class SampleGrpcPlugin extends PluginApiGrpc.PluginApiImplBase {
                 PluginDefinition.newBuilder()
                         .setName("Sample gRPC plugin")
                         .setDescription("Provides availability and accepts bookings into <YourCompany> booking system. Uses gRPC protocol")
-                        .addAllCapabilities(ImmutableList.of(SUPPORTS_AVAILABILITY, SUPPORTS_RESERVATIONS))
+                        .addAllCapabilities(ImmutableList.of(SUPPORTS_AVAILABILITY, SUPPORTS_RESERVATIONS, SUPPORTS_AMENDMENT, SUPPORTS_RESERVATION_CANCELLATION))
                         .addAllParameters(
                                 ImmutableList.of(
                                         asRequiredStringParameter(Configuration.SAMPLE_API_SCHEME),         // e.g. https
@@ -121,30 +120,9 @@ public class SampleGrpcPlugin extends PluginApiGrpc.PluginApiImplBase {
         log.trace("In ::searchProducts");
         Configuration configuration = Configuration.fromGrpcParameters(request.getParametersList());
 
-        // Let's say we are about to call http(s)://yoururl/product to get a list of products
-        HttpUrl.Builder urlBuilder = getUrlBuilder(configuration)
-                        .addPathSegment("product");
-        // Create HTTP get call using basic authorization, taking username/password from the same configuration
-        Request getRequest = new Request.Builder()
-                .addHeader("Content-Type", "application/json")
-                .addHeader("Authorization", Credentials.basic(configuration.username, configuration.password))
-                .url(urlBuilder.build())
-                .build();
-        log.debug("Making HTTP GET request {}", getRequest);
+        // At this point you might want to call your external system to do the actual search and return data back.
+        // Code below just provides some mocks.
 
-        String httpResponseBody;
-        try {
-            client.newCall(getRequest)
-                    .execute()
-                    .body().string();
-        } catch (IOException e) {
-            log.error("I/O error while calling remote API", e);
-            responseObserver.onError(e);
-            return;
-        }
-
-        // Do something with httpResponseBody, e.g. convert this JSON into POJO and convert that POJO into BasicProductInfo
-        // Don't forget to filter them by country and city, based on request parameters.
         BasicProductInfo basicProductInfo = BasicProductInfo.newBuilder()
                 .setId("123")
                 .setName("Mock product")
@@ -174,6 +152,9 @@ public class SampleGrpcPlugin extends PluginApiGrpc.PluginApiImplBase {
     public void getProductById(GetProductByIdRequest request, StreamObserver<ProductDescription> responseObserver) {
         log.trace("In ::getProductById");
         Configuration configuration = Configuration.fromGrpcParameters(request.getParametersList());
+
+        // At this point you might want to call your external system to do the actual get and return data back.
+        // Code below just provides some mocks.
 
         // similar to searchProducts except this should return a single product with a bit more information
         ProductDescription productDescription = ProductDescription.newBuilder()
@@ -252,6 +233,10 @@ public class SampleGrpcPlugin extends PluginApiGrpc.PluginApiImplBase {
     @Override
     public void getAvailableProducts(ProductsAvailabilityRequest request, StreamObserver<ProductsAvailabilityResponse> responseObserver) {
         log.trace("In ::getAvailableProducts");
+
+        // At this point you might want to call your external system to do the actual get and return data back.
+        // Code below just provides some mocks.
+
         responseObserver.onNext(
                 ProductsAvailabilityResponse.newBuilder()
                         .setProductId("123")
@@ -270,6 +255,10 @@ public class SampleGrpcPlugin extends PluginApiGrpc.PluginApiImplBase {
     @Override
     public void getProductAvailability(ProductAvailabilityRequest request, StreamObserver<ProductAvailabilityWithRatesResponse> responseObserver) {
         log.trace("In ::getProductAvailability");
+
+        // At this point you might want to call your external system to do the actual get and return data back.
+        // Code below just provides some mocks.
+
         LocalDate tomorrow = LocalDate.now().plusDays(1L);
         responseObserver.onNext(
                 ProductAvailabilityWithRatesResponse.newBuilder()
@@ -327,6 +316,10 @@ public class SampleGrpcPlugin extends PluginApiGrpc.PluginApiImplBase {
     @Override
     public void createReservation(ReservationRequest request, StreamObserver<ReservationResponse> responseObserver) {
         log.trace("In ::createReservation");
+
+        // At this point you might want to call your external system to do the actual reservation and return data back.
+        // Code below just provides some mocks.
+
         responseObserver.onNext(
                 ReservationResponse.newBuilder()
                         .setSuccessfulReservation(
@@ -349,6 +342,10 @@ public class SampleGrpcPlugin extends PluginApiGrpc.PluginApiImplBase {
     @Override
     public void confirmBooking(ConfirmBookingRequest request, StreamObserver<ConfirmBookingResponse> responseObserver) {
         log.trace("In ::confirmBooking");
+
+        // At this point you might want to call your external system to do the actual confirmation and return data back.
+        // Code below just provides some mocks.
+
         processBookingSourceInfo(request.getReservationData().getBookingSource());
         String confirmationCode = UUID.randomUUID().toString();
         responseObserver.onNext(
@@ -425,6 +422,10 @@ public class SampleGrpcPlugin extends PluginApiGrpc.PluginApiImplBase {
     @Override
     public void cancelBooking(CancelBookingRequest request, StreamObserver<CancelBookingResponse> responseObserver) {
         log.trace("In ::cancelBooking");
+
+        // At this point you might want to call your external system to do the actual cancellation and return data back.
+        // Code below just provides some mocks.
+
         responseObserver.onNext(
                 CancelBookingResponse.newBuilder()
                         .setSuccessfulCancellation(
@@ -434,5 +435,51 @@ public class SampleGrpcPlugin extends PluginApiGrpc.PluginApiImplBase {
         );
         responseObserver.onCompleted();
         log.trace("Out ::cancelBooking");
+    }
+
+    @Override
+    public void cancelReservation(CancelReservationRequest request, StreamObserver<CancelReservationResponse> responseObserver) {
+        log.trace("In ::cancelReservation");
+
+        // At this point you might want to call your external system to do the actual cancellation and return data back.
+        // Code below just provides some mocks.
+
+        responseObserver.onNext(
+                CancelReservationResponse.newBuilder()
+                        .setSuccessfulReservationCancellation(
+                                SuccessfulReservationCancellation.newBuilder()
+                        )
+                        .build()
+        );
+        responseObserver.onCompleted();
+        log.trace("Out ::cancelReservation");
+    }
+
+    @Override
+    public void amendBooking(AmendBookingRequest request, StreamObserver<AmendBookingResponse> responseObserver) {
+        log.trace("In ::amendBooking");
+
+        // At this point you might want to call your external system to do the actual amendment and return data back.
+        // Code below just provides some mocks.
+
+        processBookingSourceInfo(request.getReservationData().getBookingSource());
+        String confirmationCode = UUID.randomUUID().toString();
+        responseObserver.onNext(
+                AmendBookingResponse.newBuilder()
+                        .setSuccessfulAmendment(
+                                SuccessfulAmendment.newBuilder()
+                                        .setAmendmentConfirmationCode(confirmationCode)
+                                        .setBookingTicket(
+                                                Ticket.newBuilder()
+                                                        .setQrTicket(
+                                                                QrTicket.newBuilder()
+                                                                        .setTicketBarcode(confirmationCode + "ticket_amended")
+                                                        )
+                                        )
+                        )
+                        .build()
+        );
+        responseObserver.onCompleted();
+        log.trace("Out ::amendBooking");
     }
 }

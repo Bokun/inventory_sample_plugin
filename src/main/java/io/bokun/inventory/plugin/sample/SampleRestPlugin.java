@@ -391,9 +391,11 @@ public class SampleRestPlugin {
         SuccessfulAmendment successfulAmendment = new SuccessfulAmendment();
         Ticket ticket = new Ticket();
         QrTicket qrTicket = new QrTicket();
-        qrTicket.setTicketBarcode(request.getBookingConfirmationCode() + "_ticket_amended");
+        String ticketBarcode = request.getBookingConfirmationCode() + "_ticket_amended";
+        qrTicket.setTicketBarcode(ticketBarcode);
         ticket.setQrTicket(qrTicket);
         successfulAmendment.setBookingTicket(ticket);
+        successfulAmendment.setAmendmentConfirmationCode(ticketBarcode);
         response.setSuccessfulAmendment(successfulAmendment);
 
         exchange.getResponseHeaders().put(CONTENT_TYPE, "application/json; charset=utf-8");
