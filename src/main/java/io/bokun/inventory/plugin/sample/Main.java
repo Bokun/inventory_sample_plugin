@@ -216,6 +216,7 @@ public class Main {
                             new RoutingHandler()
                                     .get("/plugin/definition", server.restService::getDefinition)
                                     .post("/product/search", new BlockingHandler(server.restService::searchProducts))
+                                    .post("/product/import", new BlockingHandler(server.restService::importProduct))
                                     .post("/product/getById", new BlockingHandler(server.restService::getProductById))
                                     .post("/product/getAvailability", new BlockingHandler(server.restService::getProductAvailability))
                                     .post("/booking/reserve", new BlockingHandler(server.restService::createReservation))

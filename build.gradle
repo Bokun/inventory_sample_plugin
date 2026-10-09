@@ -38,8 +38,8 @@ repositories {
 }
 
 dependencies {
-    implementation 'io.bokun.inventory:common-api:0.5.3'
-    implementation 'io.bokun.inventory:plugin-api:0.5.3'
+    implementation 'io.bokun.inventory:common-api:0.5.4'
+    implementation 'io.bokun.inventory:plugin-api:0.5.4'
 
     // The API jars don't declare their dependencies: generated gRPC code needs grpc-protobuf/grpc-stub, REST models need Gson
     implementation platform('io.grpc:grpc-bom:1.84.2')

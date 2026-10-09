@@ -99,21 +99,6 @@ public class SampleGrpcPlugin extends PluginApiGrpc.PluginApiImplBase {
     }
 
     /**
-     * Helper method which creates {@link HttpUrl.Builder} based on configuration (scheme/host/port/path).
-     *
-     * @param configuration configuration to use to create OkHttp url builder.
-     * @return url builder which is ready to use.
-     */
-    @Nonnull
-    private HttpUrl.Builder getUrlBuilder(@Nonnull Configuration configuration) {
-        return new HttpUrl.Builder()
-                .scheme(configuration.scheme)
-                .host(configuration.host)
-                .port(configuration.port)
-                .encodedPath(configuration.apiPath);
-    }
-
-    /**
      * This method should list all your products
      */
     @Override
@@ -144,6 +129,22 @@ public class SampleGrpcPlugin extends PluginApiGrpc.PluginApiImplBase {
         responseObserver.onNext(basicProductInfo);      // you will likely want to run this in a loop, to return multiple products
         responseObserver.onCompleted();                 // make sure this call is never forgotten as IS will otherwise block waiting endlessly 
         log.trace("Successfully completed ::searchProducts");
+    }
+
+    @Override
+    public void importProduct(ImportProductRequest request, StreamObserver<ImportProductResponse> responseObserver) {
+        log.trace("In ::importProduct");
+        var configuration = Configuration.fromGrpcParameters(request.getParametersList());
+
+        var greatSuccess = ImportProductResponse.newBuilder()
+                .setSuccessfulProductImport(
+                        SuccessfulProductImport.newBuilder().setPlatformProductId(System.currentTimeMillis()).build()
+                )
+                .build();
+
+        responseObserver.onNext(greatSuccess);
+        responseObserver.onCompleted();
+        log.trace("Successfully completed ::importProduct");
     }
 
     /**

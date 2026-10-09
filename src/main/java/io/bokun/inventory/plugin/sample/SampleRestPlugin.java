@@ -74,6 +74,7 @@ public class SampleRestPlugin {
 
         definition.getCapabilities().add(RESERVATION_CANCELLATION);
         definition.getCapabilities().add(AMENDMENT);
+        definition.getCapabilities().add(PRODUCT_IMPORT);
 
         // reuse parameter names from grpc
         definition.getParameters().add(asRequiredStringParameter(Configuration.SAMPLE_API_SCHEME));    // e.g. https
@@ -88,8 +89,21 @@ public class SampleRestPlugin {
     }
 
     /**
-     * This method should list all your products
+     * This method should import product into Bokun platform
      */
+    public void importProduct(@Nonnull HttpServerExchange exchange) {
+        var response = new ImportProductResponse();
+        var greatSuccess = new SuccessfulProductImport();
+        greatSuccess.setPlatformProductId(System.currentTimeMillis());
+        response.setSuccessfulProductImport(greatSuccess);
+
+        exchange.getResponseHeaders().put(CONTENT_TYPE, "application/json; charset=utf-8");
+        exchange.getResponseSender().send(new Gson().toJson(response));
+    }
+
+        /**
+         * This method should list all your products
+         */
     public void searchProducts(@Nonnull HttpServerExchange exchange) {
         var request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), SearchProductRequest.class);
         var configuration = Configuration.fromRestParameters(request.getParameters());
@@ -120,8 +134,29 @@ public class SampleRestPlugin {
         basicProductInfo.setCities(ImmutableList.of("London"));
         basicProductInfo.setCountries(ImmutableList.of("GB"));
 
+        var basicProductInfo2 = new BasicProductInfo();     // you will likely want to run this in a loop, to return multiple products
+        basicProductInfo2.setId("234");
+        basicProductInfo2.setName("Mock product2");
+        basicProductInfo2.setDescription("Mock product description2");
+        basicProductInfo2.setPricingCategories(new ArrayList<>());
+        {
+            var adult = new PricingCategory();
+            adult.setId("ADT");         // can be any code as long as it is unique per pricing category. This will also connect with other calls
+            adult.setLabel("Adult");
+            basicProductInfo2.getPricingCategories().add(adult);
+        }
+        {
+            var child = new PricingCategory();
+            child.setId("CHD");
+            child.setLabel("Child");
+            basicProductInfo2.getPricingCategories().add(child);
+        }
+
+        basicProductInfo2.setCities(ImmutableList.of("London"));
+        basicProductInfo2.setCountries(ImmutableList.of("GB"));
+
         exchange.getResponseHeaders().put(CONTENT_TYPE, "application/json; charset=utf-8");
-        exchange.getResponseSender().send(new Gson().toJson(Lists.newArrayList(basicProductInfo)));
+        exchange.getResponseSender().send(new Gson().toJson(Lists.newArrayList(basicProductInfo, basicProductInfo2)));
     }
 
     /**
@@ -133,7 +168,7 @@ public class SampleRestPlugin {
 
         // similar to searchProducts except this should return a single product with a bit more information
         var description = new ProductDescription();
-        description.setId("123");
+        description.setId(request.getExternalId());
         description.setName("Mock product");
         description.setDescription("Mock product description");
 
