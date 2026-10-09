@@ -90,7 +90,7 @@ public class Main {
      * @throws IOException if specified port can not be bound.
      */
     private void start() throws IOException {
-        Map<String, String> environmentVariables = System.getenv();
+        var environmentVariables = System.getenv();
         ServerBuilder<?> serverBuilder;
 
         // configure TLS/SSL if requested
@@ -101,15 +101,15 @@ public class Main {
             if (!environmentVariables.containsKey("KEY_FILE") || !Files.exists(Paths.get(environmentVariables.get("KEY_FILE")))) {
                 throw new IllegalStateException("Key file is required if running with TLS/SSL");
             }
-            File certFile = new File(environmentVariables.get("CERT_FILE"));
-            SslContextBuilder sslContextBuilder = SslContextBuilder
+            var certFile = new File(environmentVariables.get("CERT_FILE"));
+            var sslContextBuilder = SslContextBuilder
                     .forServer(
                             certFile,
                             new File(environmentVariables.get("KEY_FILE"))
                     );
-            GrpcSslContexts.configure(sslContextBuilder);
-            SslContext sslContext = sslContextBuilder
-                    .sslProvider(OPENSSL)
+            // the JDK's own TLS implementation; no native (OpenSSL/BoringSSL) library needed
+            GrpcSslContexts.configure(sslContextBuilder, JDK);
+            var sslContext = sslContextBuilder
                     .trustManager(certFile)
                     .clientAuth(OPTIONAL)
                     .build();
@@ -123,7 +123,7 @@ public class Main {
 
         // configure shared secret if set via environment variable
         if (environmentVariables.containsKey("SHARED_SECRET")) {
-            String sharedSecret = environmentVariables.get("SHARED_SECRET");
+            var sharedSecret = environmentVariables.get("SHARED_SECRET");
             serverBuilder.addService(ServerInterceptors.intercept(grpcService, getSharedSecretCheckerInterceptor(sharedSecret)));
             log.info("Using shared secret for caller authentication");
         } else {
@@ -175,13 +175,13 @@ public class Main {
             public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call,
                                                                          Metadata headers,
                                                                          ServerCallHandler<ReqT, RespT> next) {
-                String sharedSecretValue = headers.get(SHARED_SECRET_METADATA_KEY);
+                var sharedSecretValue = headers.get(SHARED_SECRET_METADATA_KEY);
                 if (sharedSecretValue == null || !sharedSecret.equals(sharedSecretValue)) {
                     log.warn("Incoming request does not have matching shared secret {}", sharedSecretValue);
                     call.close(Status.UNAUTHENTICATED.withDescription("Incoming request does not have matching shared secret"), headers);
                     return NOOP_LISTENER;
                 }
-                ServerCall.Listener<ReqT> listener = Contexts.interceptCall(Context.current(), call, headers, next);
+                var listener = Contexts.interceptCall(Context.current(), call, headers, next);
                 return new ForwardingServerCallListener.SimpleForwardingServerCallListener<ReqT>(listener) {};
             }
         };
@@ -201,8 +201,8 @@ public class Main {
             System.err.println("  -grpc Runs sample gRPC service");
             System.exit(1);
         }
-        Injector injector = Guice.createInjector(new GuiceInitializer());
-        Main server = injector.getInstance(Main.class);
+        var injector = Guice.createInjector(new GuiceInitializer());
+        var server = injector.getInstance(Main.class);
 
         if (isGrpc) {
             server.start();
@@ -217,7 +217,6 @@ public class Main {
                                     .get("/plugin/definition", server.restService::getDefinition)
                                     .post("/product/search", new BlockingHandler(server.restService::searchProducts))
                                     .post("/product/getById", new BlockingHandler(server.restService::getProductById))
-                                    .post("/product/getAvailable", new BlockingHandler(server.restService::getAvailableProducts))
                                     .post("/product/getAvailability", new BlockingHandler(server.restService::getProductAvailability))
                                     .post("/booking/reserve", new BlockingHandler(server.restService::createReservation))
                                     .post("/booking/cancelReserve", new BlockingHandler(server.restService::cancelReservation))
@@ -239,10 +238,10 @@ public class Main {
 
         @Override
         protected void configure() {
-            Map<String, String> guiceSpecificVars = System.getenv().entrySet().stream()
+            var guiceSpecificVars = System.getenv().entrySet().stream()
                     .filter(entry -> entry.getKey().toUpperCase().startsWith(ENVIRONMENT_PREFIX))
                     .collect(Collectors.toMap(entry -> entry.getKey().toUpperCase(), Map.Entry::getValue));
-            Binder binder = binder();
+            var binder = binder();
             bindProperties(binder, guiceSpecificVars);
             binder.bind(SampleGrpcPlugin.class).in(SINGLETON);
             binder.bind(Main.class).in(SINGLETON);

@@ -1,146 +1,117 @@
-import com.amazonaws.auth.AWSCredentials
-import com.amazonaws.auth.DefaultAWSCredentialsProviderChain
-
-buildscript {
-    ext {
-        awsVersion = '1.11.455'
-    }
-    repositories {
-        maven { url "https://plugins.gradle.org/m2/" }
-        mavenLocal()
-        mavenCentral()
-        jcenter()
-    }
-    dependencies {
-        classpath("com.amazonaws:aws-java-sdk-core:${awsVersion}")
-        classpath("com.amazonaws:aws-java-sdk-s3:${awsVersion}")
-        classpath 'com.google.protobuf:protobuf-gradle-plugin:0.8.1'
-        classpath('se.transmode.gradle:gradle-docker:1.2')
-        classpath('jp.classmethod.aws:gradle-aws-plugin:0.32'){
-            exclude group:'jp.xet.spar-wings', module:'spar-wings-awscli-config'
-        }
-    }
+plugins {
+    id 'java'
+    id 'application'
+    id 'idea'
+    id 'com.gradleup.shadow' version '9.6.1'
 }
-
-apply plugin: "java"
-apply plugin: "application"
-apply plugin: "idea"
-apply plugin: 'docker'
-apply plugin: 'jp.classmethod.aws'
 
 group = 'bokun'
-//version '0.3.4'         // should match the one in API and inventory service
+version = '0.5.3'         // should match the one in API and inventory service
 
-task wrapper(type: Wrapper) {
-    gradleVersion = '4.7'
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
 }
-
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
 
 // This thingie below will ensure all dependencies are always fetched when running from IntelliJ
 // It should not be there by default and only uncommented when necessary, followed by IntelliJ Gradle refresh
+//configurations.all {
+//    resolutionStrategy.cacheDynamicVersionsFor 0, 'hours'
+//    resolutionStrategy.cacheChangingModulesFor 0, 'hours'
+//}
 
-configurations.all {
-    resolutionStrategy.cacheDynamicVersionsFor 0, 'hours'
-    resolutionStrategy.cacheChangingModulesFor 0, 'hours'
-}
-
-mainClassName="io.bokun.inventory.plugin.sample.Main"
-
-def buildNumber = 'DEV'
-if (project.hasProperty('buildNo')) {
-    buildNumber = buildNo
-}
-
-def jsonName = "${jar.baseName}-${buildNumber}.json"
-def dockerName = "${group}/${jar.baseName}:${buildNumber}"
-def jarName = "${jar.baseName}.jar"
-
-AWSCredentials awsCredentials = DefaultAWSCredentialsProviderChain.getInstance().credentials;
+def buildNumber = project.findProperty('buildNo') ?: 'DEV'
+def baseName = project.name
+def jsonName = "${baseName}-${buildNumber}.json"
+def dockerName = "${group}/${baseName}:${buildNumber}"
 
 repositories {
-    maven {
-        url "http://public-pmr.bokun.io.s3-website-eu-west-1.amazonaws.com/snapshots"
-    }
-    mavenLocal()
     mavenCentral()
-    jcenter()
+    // Inventory Service API (common-api, plugin-api); public, no credentials needed
     maven {
-        url "http://public-pmr.bokun.io.s3-website-eu-west-1.amazonaws.com/release"
+        url = 'https://s3.eu-west-1.amazonaws.com/public-pmr.bokun.io/release'
+        content {
+            includeGroup 'io.bokun.inventory'
+        }
     }
 }
 
 dependencies {
-    compile group: 'com.google.code.findbugs', name: 'jsr305', version:'3.0.2'
-    compile group: 'org.slf4j', name: 'slf4j-api', version:'1.7.25'
-    compile group: 'org.slf4j', name: 'slf4j-log4j12', version:'1.7.25'
-    compile group: 'com.google.guava', name: 'guava', version:'27.1-jre'
-    compile 'io.grpc:grpc-all:1.11.0'
-    compile 'io.bokun.inventory:common-api:0.4.2'
-    compile 'io.bokun.inventory:plugin-api:0.4.2'
-    compile group: 'com.squareup.okhttp', name: 'okhttp', version: '2.7.5'
-    compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.6'
-    compile 'com.google.inject:guice:4.2.2'
-    compile 'io.netty:netty-tcnative-boringssl-static:2.0.1.Final'
-    compile 'io.undertow:undertow-core:2.0.19.Final'
+    implementation 'io.bokun.inventory:common-api:0.5.3'
+    implementation 'io.bokun.inventory:plugin-api:0.5.3'
 
-    testCompile group: 'junit', name: 'junit', version:'4.12'
+    // The API jars don't declare their dependencies: generated gRPC code needs grpc-protobuf/grpc-stub, REST models need Gson
+    implementation platform('io.grpc:grpc-bom:1.84.2')
+    implementation 'io.grpc:grpc-netty'
+    implementation 'io.grpc:grpc-protobuf'
+    implementation 'io.grpc:grpc-stub'
+    implementation 'com.google.code.gson:gson:2.14.0'
+
+    implementation 'com.google.code.findbugs:jsr305:3.0.2'
+    implementation 'org.slf4j:slf4j-api:2.0.20'
+    runtimeOnly 'org.apache.logging.log4j:log4j-slf4j2-impl:2.26.1'
+    runtimeOnly 'org.apache.logging.log4j:log4j-core:2.26.1'
+    implementation 'com.google.guava:guava:33.7.2-jre'
+    implementation 'com.squareup.okhttp3:okhttp:5.5.0'
+    // Guice 7.0.0 shades ASM 9.5, which can't read Java 25 class files (breaks source locations in Guice errors).
+    // Use the unshaded 'classes' jar with a current ASM instead; drop once a Guice release bundles a newer ASM.
+    implementation 'com.google.inject:guice:7.0.0:classes'
+    implementation 'org.ow2.asm:asm:9.10.1'
+    implementation 'io.undertow:undertow-core:2.4.4.Final'
 }
 
 idea {
     module {
-        sourceDirs += file("${projectDir}/src/generated/main/java");
-        sourceDirs += file("${projectDir}/src/generated/main/grpc");
+        sourceDirs += file("${projectDir}/src/generated/main/java")
+        sourceDirs += file("${projectDir}/src/generated/main/grpc")
     }
 }
 
-mainClassName="io.bokun.inventory.plugin.sample.Main"
+// Guice 7 and protobuf use sun.misc.Unsafe memory access.
+// It only prints warnings on JDK 25; allow it explicitly. Keep in sync with src/main/docker/Dockerfile.
+def jdkCompatibilityJvmArgs = ['--sun-misc-unsafe-memory-access=allow']
+
+application {
+    mainClass = 'io.bokun.inventory.plugin.sample.Main'
+    applicationDefaultJvmArgs = jdkCompatibilityJvmArgs
+}
 
 startScripts.enabled = false
 
-task sourceJava(type: Jar) {
+tasks.register('sourceJava', Jar) {
     from sourceSets.main.allJava
 }
 
-jar {
-    from {
-        (configurations.runtime).collect {
-            it.isDirectory() ? it : zipTree(it)
-        }
+// Executable jar with all dependencies, used by the Docker image
+shadowJar {
+    archiveFileName = "${baseName}.jar"
+    // Keep the first copy of duplicate classes, but let the transformers below see every copy of the files they merge
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    filesMatching(['META-INF/services/**', 'META-INF/*.kotlin_module', '**/Log4j2Plugins.dat']) {
+        duplicatesStrategy = DuplicatesStrategy.INCLUDE
     }
-    manifest {
-        attributes 'Main-Class': 'io.bokun.inventory.plugin.sample.Main'
-    }
+    mergeServiceFiles()
 }
 
-task createJsonAWS(type: Copy, dependsOn: clean) {
-    println "createJsonAWS"
-
-    from "src/main/docker/aws.json"
-    into "build/bundle"
+tasks.register('createJsonAWS', Copy) {
+    dependsOn clean
+    from 'src/main/docker/aws.json'
+    into layout.buildDirectory.dir('bundle')
     expand(dockerName: dockerName)
     rename { String fileName ->
-        fileName.replace("aws.json", jsonName)
+        fileName.replace('aws.json', jsonName)
     }
 }
 
-task buildDocker(type: Docker, dependsOn: [build]) {
-    push = false
-    applicationName = jar.baseName
-    tagVersion = buildNumber
-    dockerfile = file('src/main/docker/Dockerfile')
-    doFirst {
-        println("libs = ${project.buildDir}/libs")
-        println("jar = ${jar.baseName}")
-        println("${project.name}-${version}.jar")
-        println(jarName)
-        copy {
-            println("copy jar")
-            println("jar = ${jarName}")
-            from "${project.buildDir}/libs"
-            into stageDir
-            include "${jarName}"
-        }
-    }
+tasks.register('stageDocker', Sync) {
+    from shadowJar
+    from 'src/main/docker/Dockerfile'
+    into layout.buildDirectory.dir('docker')
+}
+
+tasks.register('buildDocker', Exec) {
+    dependsOn build, stageDocker
+    workingDir layout.buildDirectory.dir('docker')
+    commandLine 'docker', 'build', '-t', dockerName, '.'
 }

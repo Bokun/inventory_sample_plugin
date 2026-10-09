@@ -9,9 +9,9 @@ import javax.annotation.*;
 import com.google.common.collect.*;
 import com.google.gson.*;
 import com.google.inject.*;
-import com.squareup.okhttp.*;
 import io.bokun.inventory.plugin.api.rest.*;
 import io.undertow.server.*;
+import okhttp3.*;
 import org.slf4j.*;
 
 import static io.bokun.inventory.plugin.api.rest.PluginCapability.*;
@@ -36,13 +36,14 @@ public class SampleRestPlugin {
 
     @Inject
     public SampleRestPlugin() {
-        this.client = new OkHttpClient();
-        client.setReadTimeout(DEFAULT_READ_TIMEOUT, SECONDS);
+        this.client = new OkHttpClient.Builder()
+                .readTimeout(DEFAULT_READ_TIMEOUT, SECONDS)
+                .build();
     }
 
     // helper method to express string as required string parameter structure, required by the REST API
     private PluginConfigurationParameter asRequiredStringParameter(String name) {
-        PluginConfigurationParameter param = new PluginConfigurationParameter();
+        var param = new PluginConfigurationParameter();
         param.setName(name);
         param.setType(PluginParameterDataType.STRING);
         param.setRequired(true);
@@ -51,7 +52,7 @@ public class SampleRestPlugin {
 
     // helper method to express string as required long parameter structure, required by the REST API
     private PluginConfigurationParameter asRequiredLongParameter(String name) {
-        PluginConfigurationParameter param = new PluginConfigurationParameter();
+        var param = new PluginConfigurationParameter();
         param.setName(name);
         param.setType(PluginParameterDataType.LONG);
         param.setRequired(true);
@@ -62,7 +63,7 @@ public class SampleRestPlugin {
      * Responds to <tt>/plugin/definition</tt> by sending back simple plugin definition JSON object.
      */
     public void getDefinition(@Nonnull HttpServerExchange exchange) {
-        PluginDefinition definition = new PluginDefinition();
+        var definition = new PluginDefinition();
         definition.setName("Sample REST plugin");
         definition.setDescription("Provides availability and accepts bookings into <YourCompany> booking system. Uses REST protocol");
 
@@ -90,27 +91,27 @@ public class SampleRestPlugin {
      * This method should list all your products
      */
     public void searchProducts(@Nonnull HttpServerExchange exchange) {
-        SearchProductRequest request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), SearchProductRequest.class);
-        Configuration configuration = Configuration.fromRestParameters(request.getParameters());
+        var request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), SearchProductRequest.class);
+        var configuration = Configuration.fromRestParameters(request.getParameters());
 
         // At this point you might want to call your external system to do the actual search and return data back.
         // Code below just provides some mocks.
 
         // Do something with httpResponseBody, e.g. convert this JSON into POJO and convert that POJO into BasicProductInfo
         // Don't forget to filter them by country and city, based on request parameters.
-        BasicProductInfo basicProductInfo = new BasicProductInfo();     // you will likely want to run this in a loop, to return multiple products
+        var basicProductInfo = new BasicProductInfo();     // you will likely want to run this in a loop, to return multiple products
         basicProductInfo.setId("123");
         basicProductInfo.setName("Mock product");
         basicProductInfo.setDescription("Mock product description");
         basicProductInfo.setPricingCategories(new ArrayList<>());
         {
-            PricingCategory adult = new PricingCategory();
+            var adult = new PricingCategory();
             adult.setId("ADT");         // can be any code as long as it is unique per pricing category. This will also connect with other calls
             adult.setLabel("Adult");
             basicProductInfo.getPricingCategories().add(adult);
         }
         {
-            PricingCategory child = new PricingCategory();
+            var child = new PricingCategory();
             child.setId("CHD");
             child.setLabel("Child");
             basicProductInfo.getPricingCategories().add(child);
@@ -127,33 +128,38 @@ public class SampleRestPlugin {
      * Return detailed information about one particular product by given ID.
      */
     public void getProductById(HttpServerExchange exchange) {
-        GetProductByIdRequest request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), GetProductByIdRequest.class);
-        Configuration configuration = Configuration.fromRestParameters(request.getParameters());
+        var request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), GetProductByIdRequest.class);
+        var configuration = Configuration.fromRestParameters(request.getParameters());
 
         // similar to searchProducts except this should return a single product with a bit more information
-        ProductDescription description = new ProductDescription();
+        var description = new ProductDescription();
         description.setId("123");
         description.setName("Mock product");
         description.setDescription("Mock product description");
 
         description.setPricingCategories(new ArrayList<>());
         {
-            PricingCategory adult = new PricingCategory();
+            var adult = new PricingCategory();
             adult.setId("ADT");         // can be any code as long as it is unique per pricing category. This will also connect with other calls
             adult.setLabel("Adult");
             description.getPricingCategories().add(adult);
         }
         {
-            PricingCategory child = new PricingCategory();
+            var child = new PricingCategory();
             child.setId("CHD");
-            child.setLabel("Adult");
+            child.setLabel("Child");
             description.getPricingCategories().add(child);
         }
 
-        Rate rate = new Rate();
+        var rate = new Rate();
         rate.setId("standard");
         rate.setLabel("Standard");
-        description.setRates(ImmutableList.of(rate));
+
+        var rate2 = new Rate();
+        rate2.setId("standard2");
+        rate2.setLabel("Standard2");
+
+        description.setRates(ImmutableList.of(rate, rate2));
         description.setBookingType(BookingType.DATE_AND_TIME);
         description.setProductCategory(ProductCategory.ACTIVITIES);
         description.setTicketSupport(
@@ -164,38 +170,93 @@ public class SampleRestPlugin {
         description.setCities(ImmutableList.of("London"));
         description.setCountries(ImmutableList.of("GB"));
 
-        Time startTime = new Time();
+        var startTime = new Time();
         startTime.setHour(13);
         startTime.setMinute(0);
         description.setStartTimes(ImmutableList.of(startTime));
 
         {                                                                               // opening hours block
-            OpeningHoursWeekday openingHoursMonday = new OpeningHoursWeekday();
+            var openingHoursMonday = new OpeningHoursWeekday();
             openingHoursMonday.setOpen24Hours(false);
-            OpeningHoursTimeInterval mondayIntervalAM = new OpeningHoursTimeInterval();
+            var mondayIntervalAM = new OpeningHoursTimeInterval();
             mondayIntervalAM.setOpenFrom("08:00");
             mondayIntervalAM.setOpenForHours(4);
             mondayIntervalAM.setOpenForMinutes(0);
-            OpeningHoursTimeInterval mondayIntervalPM = new OpeningHoursTimeInterval();
+            var mondayIntervalPM = new OpeningHoursTimeInterval();
             mondayIntervalPM.setOpenFrom("13:00");
             mondayIntervalPM.setOpenForHours(4);
             mondayIntervalPM.setOpenForMinutes(0);
             openingHoursMonday.setTimeIntervals(ImmutableList.of(mondayIntervalAM, mondayIntervalPM));
-            OpeningHours openingHours = new OpeningHours();
+            var openingHours = new OpeningHours();
             openingHours.setMonday(openingHoursMonday);
             description.setAllYearOpeningHours(openingHours);
         }
 
         {                                                                               // extras block
-            Extra extra = new Extra();
-            extra.setId("some-extra-id");
-            extra.setTitle("Some extra title");
-            extra.setDescription("Some extra description");
-            extra.setOptional(false);
-            extra.setMaxPerBooking(1);
-            extra.setLimitByPax(false);
-            extra.setIncreasesCapacity(false);
-            description.setExtras(ImmutableList.of(extra));
+            var extra1 = new Extra();
+            extra1.setId("some-extra-id");
+            extra1.setTitle("Some extra title");
+            extra1.setDescription("Some extra description");
+            extra1.setOptional(true);
+            extra1.setMaxPerBooking(10);
+            extra1.setLimitByPax(false);
+            extra1.setIncreasesCapacity(false);
+
+            var extra2 = new Extra();
+            extra2.setId("some-extra-id2");
+            extra2.setTitle("Some extra title2");
+            extra2.setDescription("Some extra description2");
+            extra2.setOptional(true);
+            extra2.setMaxPerBooking(10);
+            extra2.setLimitByPax(false);
+            extra2.setIncreasesCapacity(false);
+            description.setExtras(ImmutableList.of(extra1, extra2));
+        }
+
+        {                                                                               // questions block
+            // questions asked once per booking; answers arrive in ReservationData::answers
+            var hotel = new Question();
+            hotel.setId("hotel");
+            hotel.setType(QuestionType.TEXT);
+            hotel.setLabel("Name of your hotel");
+
+            var arrival = new Question();
+            arrival.setId("arrival");
+            arrival.setType(QuestionType.DATE_AND_TIME);
+            arrival.setLabel("When do you arrive in London?");
+
+            var language = new Question();
+            language.setId("language");
+            language.setType(QuestionType.OPTIONS);
+            language.setLabel("Preferred tour language");
+            language.setRequired(true);
+            language.setOptions(ImmutableList.of("English", "Spanish", "German"));
+
+            description.setQuestionsPerBooking(ImmutableList.of(hotel, arrival, language));
+
+            // questions asked for each passenger; answers arrive in Passenger::answers
+            var age = new Question();
+            age.setId("age");
+            age.setType(QuestionType.INT);
+            age.setLabel("Age");
+            age.setRequired(true);
+
+            var dateOfBirth = new Question();
+            dateOfBirth.setId("dob");
+            dateOfBirth.setType(QuestionType.DATE);
+            dateOfBirth.setLabel("Date of birth");
+
+            var weight = new Question();
+            weight.setId("weight");
+            weight.setType(QuestionType.DOUBLE);
+            weight.setLabel("Weight (kg)");
+
+            var wheelchair = new Question();
+            wheelchair.setId("wheelchair");
+            wheelchair.setType(QuestionType.BOOLEAN);
+            wheelchair.setLabel("Do you need wheelchair access?");
+
+            description.setQuestionsPerPassenger(ImmutableList.of(age, dateOfBirth, weight, wheelchair));
         }
 
         description.setTicketType(TicketType.QR_CODE);
@@ -207,79 +268,60 @@ public class SampleRestPlugin {
     }
 
     /**
-     * A set of product ids provided, return their availability over given date range ("shallow" call).
-     * This will return a subset of product IDs passed on via ProductAvailabilityRequest.
-     * Note: even though request contains capacity and date range, for a matching product it is enough to have availabilities for *some* dates over
-     * requested period. Subsequent GetProductAvailability request will clarify precise dates and capacities.
-     */
-    public void getAvailableProducts(HttpServerExchange exchange) {
-        ProductsAvailabilityRequest request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), ProductsAvailabilityRequest.class);
-        Configuration configuration = Configuration.fromRestParameters(request.getParameters());
-
-        // At this point you might want to call your external system to do the actual search and return data back.
-        // Code below just provides some mocks.
-
-        if (!request.getExternalProductIds().contains("123")) {
-            throw new IllegalStateException("Previous call only returned product having id=123");
-        }
-
-        ProductsAvailabilityResponse response = new ProductsAvailabilityResponse();
-        response.setActualCheckDone(true);
-        response.setProductId("123");
-
-        exchange.getResponseHeaders().put(CONTENT_TYPE, "application/json; charset=utf-8");
-        exchange.getResponseSender().send(new Gson().toJson(ImmutableList.of(response)));
-    }
-
-    /**
-     * Get availability of a particular product over a date range. This request should follow GetAvailableProducts and provide more details on
-     * precise dates/times for each product as well as capacity for each date. This call, however, is for a single product only (as opposed to
-     * {@link #getAvailableProducts(HttpServerExchange)} which checks many products but only does a basic shallow check.
+     * Get availability of a particular product over a date range. This should provide details on precise dates/times as well as capacity for
+     * each date.
      */
     public void getProductAvailability(HttpServerExchange exchange) {
         log.trace("In ::getProductAvailability");
 
-        ProductAvailabilityRequest request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), ProductAvailabilityRequest.class);
-        Configuration configuration = Configuration.fromRestParameters(request.getParameters());
+        var request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), ProductAvailabilityRequest.class);
+        var configuration = Configuration.fromRestParameters(request.getParameters());
+        log.trace("Seller (vendor id) asking for availability: {}", request.getSellerId());
 
         // At this point you might want to call your external system to do the actual search and return data back.
         // Code below just provides some mocks.
 
-        List<ProductAvailabilityWithRatesResponse> l = new ArrayList<>();
+        var l = new ArrayList<ProductAvailabilityWithRatesResponse>();
         for (int i=0; i<=1; i++) {
-            ProductAvailabilityWithRatesResponse response = new ProductAvailabilityWithRatesResponse();
-            response.setCapacity(100);
+            var response = new ProductAvailabilityWithRatesResponse();
+            response.setCapacity(10);
 
-            LocalDate date = LocalDate.now().plusDays(i);
-            DateYMD tomorrowDate = new DateYMD();
-            tomorrowDate.setYear(date.getYear());
-            tomorrowDate.setMonth(date.getMonthValue());
-            tomorrowDate.setDay(date.getDayOfMonth());
-            response.setDate(tomorrowDate);
+            var rate = new RateWithPrice();
+            LocalDate date;
+            if (i % 2 == 0) {
+                date = LocalDate.now().plusDays(1);
+                rate.setRateId("standard");
+            } else {
+                date = LocalDate.now().plusDays(2);
+                rate.setRateId("standard2");
+            }
 
-            Time tomorrowTime = new Time();
-            tomorrowTime.setHour(13);
-            tomorrowTime.setMinute(00);
-            response.setTime(tomorrowTime);
+            var dateYMD = new DateYMD();
+            dateYMD.setYear(date.getYear());
+            dateYMD.setMonth(date.getMonthValue());
+            dateYMD.setDay(date.getDayOfMonth());
+            response.setDate(dateYMD);
 
-            RateWithPrice rate = new RateWithPrice();
-            rate.setRateId("standard");
+            var time = new Time();
+            time.setHour(13);
+            time.setMinute(00);
+            response.setTime(time);
 
-            PricePerPerson pricePerPerson = new PricePerPerson();
+            var pricePerPerson = new PricePerPerson();
             pricePerPerson.setPricingCategoryWithPrice(new ArrayList<>());
             {
-                PricingCategoryWithPrice adultCategoryPrice = new PricingCategoryWithPrice();
+                var adultCategoryPrice = new PricingCategoryWithPrice();
                 adultCategoryPrice.setPricingCategoryId("ADT");
-                Price adultPrice = new Price();
+                var adultPrice = new Price();
                 adultPrice.setAmount("100");
                 adultPrice.setCurrency("EUR");
                 adultCategoryPrice.setPrice(adultPrice);
                 pricePerPerson.getPricingCategoryWithPrice().add(adultCategoryPrice);
             }
             {
-                PricingCategoryWithPrice childCategoryPrice = new PricingCategoryWithPrice();
+                var childCategoryPrice = new PricingCategoryWithPrice();
                 childCategoryPrice.setPricingCategoryId("CHD");
-                Price childPrice = new Price();
+                var childPrice = new Price();
                 childPrice.setAmount("10");
                 childPrice.setCurrency("EUR");
                 childCategoryPrice.setPrice(childPrice);
@@ -307,13 +349,22 @@ public class SampleRestPlugin {
         // body of this method can be left empty if reserve & confirm is only supported as a single step
         log.trace("In ::createReservation");
 
+        var request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), ReservationRequest.class);
+        var configuration = Configuration.fromRestParameters(request.getParameters());
+
         // At this point you might want to call your external system to do the actual reservation and return data back.
         // Code below just provides some mocks.
 
-        ReservationResponse response = new ReservationResponse();
-        SuccessfulReservation reservation = new SuccessfulReservation();
+        processAnswers(request.getReservationData());
+
+        var response = new ReservationResponse();
+        var reservation = new SuccessfulReservation();
         reservation.setReservationConfirmationCode(UUID.randomUUID().toString());
         response.setSuccessfulReservation(reservation);
+
+//        FailedReservation fr = new FailedReservation();
+//        fr.setReservationError("bla bla");
+//        response.setFailedReservation(fr);
 
         exchange.getResponseHeaders().put(CONTENT_TYPE, "application/json; charset=utf-8");
         exchange.getResponseSender().send(new Gson().toJson(response));
@@ -332,8 +383,8 @@ public class SampleRestPlugin {
         // At this point you might want to call your external system to do the actual reservation and return data back.
         // Code below just provides some mocks.
 
-        CancelReservationResponse response = new CancelReservationResponse();
-        SuccessfulReservationCancellation greatSuccess = new SuccessfulReservationCancellation();
+        var response = new CancelReservationResponse();
+        var greatSuccess = new SuccessfulReservationCancellation();
         response.setSuccessfulReservationCancellation(greatSuccess);
 
         exchange.getResponseHeaders().put(CONTENT_TYPE, "application/json; charset=utf-8");
@@ -352,20 +403,21 @@ public class SampleRestPlugin {
         // body of this method can be left empty if reserve & confirm is only supported as a single step
         log.trace("In ::confirmBooking");
 
-        ConfirmBookingRequest request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), ConfirmBookingRequest.class);
-        Configuration configuration = Configuration.fromRestParameters(request.getParameters());
+        var request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), ConfirmBookingRequest.class);
+        var configuration = Configuration.fromRestParameters(request.getParameters());
 
         // At this point you might want to call your external system to do the actual confirmation and return data back.
         // Code below just provides some mocks.
 
         processBookingSourceInfo(request.getReservationData().getBookingSource());
-        String confirmationCode = UUID.randomUUID().toString();
+        processAnswers(request.getReservationData());
+        var confirmationCode = UUID.randomUUID().toString();
 
-        ConfirmBookingResponse response = new ConfirmBookingResponse();
-        SuccessfulBooking successfulBooking = new SuccessfulBooking();
+        var response = new ConfirmBookingResponse();
+        var successfulBooking = new SuccessfulBooking();
         successfulBooking.setBookingConfirmationCode(confirmationCode);
-        Ticket ticket = new Ticket();
-        QrTicket qrTicket = new QrTicket();
+        var ticket = new Ticket();
+        var qrTicket = new QrTicket();
         qrTicket.setTicketBarcode(confirmationCode + "_ticket");
         ticket.setQrTicket(qrTicket);
         successfulBooking.setBookingTicket(ticket);
@@ -379,19 +431,20 @@ public class SampleRestPlugin {
     public void amendBooking(HttpServerExchange exchange) {
         log.trace("In ::amendBooking");
 
-        AmendBookingRequest request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), AmendBookingRequest.class);
-        Configuration configuration = Configuration.fromRestParameters(request.getParameters());
+        var request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), AmendBookingRequest.class);
+        var configuration = Configuration.fromRestParameters(request.getParameters());
 
         // At this point you might want to call your external system to do the actual amendment and return data back.
         // Code below just provides some mocks.
 
         processBookingSourceInfo(request.getReservationData().getBookingSource());
+        processAnswers(request.getReservationData());
 
-        AmendBookingResponse response = new AmendBookingResponse();
-        SuccessfulAmendment successfulAmendment = new SuccessfulAmendment();
-        Ticket ticket = new Ticket();
-        QrTicket qrTicket = new QrTicket();
-        String ticketBarcode = request.getBookingConfirmationCode() + "_ticket_amended";
+        var response = new AmendBookingResponse();
+        var successfulAmendment = new SuccessfulAmendment();
+        var ticket = new Ticket();
+        var qrTicket = new QrTicket();
+        var ticketBarcode = request.getBookingConfirmationCode() + "_ticket_amended";
         qrTicket.setTicketBarcode(ticketBarcode);
         ticket.setQrTicket(qrTicket);
         successfulAmendment.setBookingTicket(ticket);
@@ -443,6 +496,67 @@ public class SampleRestPlugin {
     }
 
     /**
+     * Example code to read answers to the questions of the product (see ProductDescription::questionsPerBooking and ::questionsPerPassenger in
+     * {@link #getProductById(HttpServerExchange)}). Question ids are the ones returned by this plugin.
+     * Only the questions which the vendor mapped to Bokun questions are answered, and an optional question might be left unanswered: answers
+     * which are missing are simply not sent. If there are no answers at all, the answer lists are not sent either (null).
+     * @param reservationData reservation data structure that is provided in reservation and booking requests
+     */
+    void processAnswers(ReservationData reservationData) {
+        for (var answer : nullToEmpty(reservationData.getAnswers())) {
+            log.trace("Booking answer: {} = {}", answer.getQuestionId(), answerToString(answer));
+        }
+        for (var reservation : nullToEmpty(reservationData.getReservations())) {
+            for (var passenger : nullToEmpty(reservation.getPassengers())) {
+                for (var answer : nullToEmpty(passenger.getAnswers())) {
+                    log.trace("Passenger ({} {}) answer: {} = {}", passenger.getContact().getFirstName(), passenger.getContact().getLastName(),
+                            answer.getQuestionId(), answerToString(answer));
+                }
+            }
+        }
+    }
+
+    private static <T> List<T> nullToEmpty(@Nullable List<T> list) {
+        return list != null ? list : List.of();
+    }
+
+    /**
+     * Exactly one of the *Answer fields is set, depending on the type of the question.
+     */
+    private static String answerToString(Answer answer) {
+        if (answer.getTextAnswer() != null) {                           // TEXT
+            return answer.getTextAnswer();
+        }
+        if (answer.getIntAnswer() != null) {                            // INT
+            return String.valueOf(answer.getIntAnswer());
+        }
+        if (answer.getDoubleAnswer() != null) {                         // DOUBLE
+            return String.valueOf(answer.getDoubleAnswer());
+        }
+        if (answer.getBooleanAnswer() != null) {                        // BOOLEAN
+            return String.valueOf(answer.getBooleanAnswer());
+        }
+        if (answer.getDateAnswer() != null) {                           // DATE
+            return toLocalDate(answer.getDateAnswer()).toString();
+        }
+        if (answer.getDateAndTimeAnswer() != null) {                    // DATE_AND_TIME
+            var dateAndTime = answer.getDateAndTimeAnswer();
+            return LocalDateTime.of(
+                    toLocalDate(dateAndTime.getDate()),
+                    LocalTime.of(dateAndTime.getTime().getHour(), dateAndTime.getTime().getMinute())
+            ).toString();
+        }
+        if (answer.getOptionsAnswers() != null) {                       // OPTIONS
+            return String.join(", ", answer.getOptionsAnswers());
+        }
+        return "";
+    }
+
+    private static LocalDate toLocalDate(DateYMD date) {
+        return LocalDate.of(date.getYear(), date.getMonth(), date.getDay());
+    }
+
+    /**
      * Only implement this method if {@link PluginCapability#RESERVATIONS} is <b>NOT</b> among capabilities of your {@link PluginDefinition}.
      * Otherwise you are only required to implement both {@link #createReservation(HttpServerExchange)} and {@link
      * #confirmBooking(HttpServerExchange)} separately; this method should remain empty or non-overridden.
@@ -451,20 +565,21 @@ public class SampleRestPlugin {
         log.trace("In ::createAndConfirmBooking");          // should never happen
 //        throw new UnsupportedOperationException();
 
-        CreateConfirmBookingRequest request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), CreateConfirmBookingRequest.class);
-        Configuration configuration = Configuration.fromRestParameters(request.getParameters());
+        var request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), CreateConfirmBookingRequest.class);
+        var configuration = Configuration.fromRestParameters(request.getParameters());
 
         // At this point you might want to call your external system to do the actual reserve&confirm and return data back.
         // Code below just provides some mocks.
 
         processBookingSourceInfo(request.getReservationData().getBookingSource());
-        String confirmationCode = UUID.randomUUID().toString();
+        processAnswers(request.getReservationData());
+        var confirmationCode = UUID.randomUUID().toString();
 
-        ConfirmBookingResponse response = new ConfirmBookingResponse();
-        SuccessfulBooking successfulBooking = new SuccessfulBooking();
+        var response = new ConfirmBookingResponse();
+        var successfulBooking = new SuccessfulBooking();
         successfulBooking.setBookingConfirmationCode(confirmationCode);
-        Ticket ticket = new Ticket();
-        QrTicket qrTicket = new QrTicket();
+        var ticket = new Ticket();
+        var qrTicket = new QrTicket();
         qrTicket.setTicketBarcode(confirmationCode + "_ticket");
         ticket.setQrTicket(qrTicket);
         successfulBooking.setBookingTicket(ticket);
@@ -483,14 +598,17 @@ public class SampleRestPlugin {
     public void cancelBooking(HttpServerExchange exchange) {
         log.trace("In ::cancelBooking");
 
-        CancelBookingRequest request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), CancelBookingRequest.class);
-        Configuration configuration = Configuration.fromRestParameters(request.getParameters());
+        var request = new Gson().fromJson(new InputStreamReader(exchange.getInputStream()), CancelBookingRequest.class);
+        var configuration = Configuration.fromRestParameters(request.getParameters());
 
         // At this point you might want to call your external system to do the actual booking cancellation and return data back.
         // Code below just provides some mocks.
 
-        CancelBookingResponse response = new CancelBookingResponse();
+        var response = new CancelBookingResponse();
         response.setSuccessfulCancellation(new SuccessfulCancellation());
+//        FailedCancellation failedCancellation = new FailedCancellation();
+//        failedCancellation.cancellationError("asdfgasdfadf");
+//        response.setFailedCancellation(failedCancellation);
 
         exchange.getResponseHeaders().put(CONTENT_TYPE, "application/json; charset=utf-8");
         exchange.getResponseSender().send(new Gson().toJson(response));

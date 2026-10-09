@@ -7,12 +7,12 @@ import javax.annotation.*;
 
 import com.google.common.collect.*;
 import com.google.inject.*;
-import com.squareup.okhttp.*;
 import io.bokun.inventory.common.api.grpc.Date;
 import io.bokun.inventory.common.api.grpc.*;
 import io.bokun.inventory.plugin.api.grpc.PluginConfigurationParameter;
 import io.bokun.inventory.plugin.api.grpc.*;
 import io.grpc.stub.*;
+import okhttp3.*;
 import org.slf4j.*;
 
 import static io.bokun.inventory.common.api.grpc.PluginCapability.*;
@@ -37,8 +37,9 @@ public class SampleGrpcPlugin extends PluginApiGrpc.PluginApiImplBase {
 
     @Inject
     public SampleGrpcPlugin() {
-        this.client = new OkHttpClient();
-        client.setReadTimeout(DEFAULT_READ_TIMEOUT, SECONDS);
+        this.client = new OkHttpClient.Builder()
+                .readTimeout(DEFAULT_READ_TIMEOUT, SECONDS)
+                .build();
     }
 
     /**
@@ -118,12 +119,12 @@ public class SampleGrpcPlugin extends PluginApiGrpc.PluginApiImplBase {
     @Override
     public void searchProducts(SearchProductsRequest request, StreamObserver<BasicProductInfo> responseObserver) {
         log.trace("In ::searchProducts");
-        Configuration configuration = Configuration.fromGrpcParameters(request.getParametersList());
+        var configuration = Configuration.fromGrpcParameters(request.getParametersList());
 
         // At this point you might want to call your external system to do the actual search and return data back.
         // Code below just provides some mocks.
 
-        BasicProductInfo basicProductInfo = BasicProductInfo.newBuilder()
+        var basicProductInfo = BasicProductInfo.newBuilder()
                 .setId("123")
                 .setName("Mock product")
                 .setDescription("Mock product description")
@@ -151,13 +152,13 @@ public class SampleGrpcPlugin extends PluginApiGrpc.PluginApiImplBase {
     @Override
     public void getProductById(GetProductByIdRequest request, StreamObserver<ProductDescription> responseObserver) {
         log.trace("In ::getProductById");
-        Configuration configuration = Configuration.fromGrpcParameters(request.getParametersList());
+        var configuration = Configuration.fromGrpcParameters(request.getParametersList());
 
         // At this point you might want to call your external system to do the actual get and return data back.
         // Code below just provides some mocks.
 
         // similar to searchProducts except this should return a single product with a bit more information
-        ProductDescription productDescription = ProductDescription.newBuilder()
+        var productDescription = ProductDescription.newBuilder()
                 .setId("123")
                 .setName("Mock product")
                 .setDescription("Mock product description")
@@ -215,6 +216,55 @@ public class SampleGrpcPlugin extends PluginApiGrpc.PluginApiImplBase {
                                 .setLimitByPax(false)
                                 .setIncreasesCapacity(false)
                 )
+                // questions asked once per booking; answers arrive in ReservationData::answers
+                .addQuestionsPerBooking(
+                        Question.newBuilder()
+                                .setId("hotel")
+                                .setType(Question.QuestionType.TEXT)
+                                .setLabel("Name of your hotel")
+                )
+                .addQuestionsPerBooking(
+                        Question.newBuilder()
+                                .setId("arrival")
+                                .setType(Question.QuestionType.DATE_AND_TIME)
+                                .setLabel("When do you arrive in London?")
+                )
+                .addQuestionsPerBooking(
+                        Question.newBuilder()
+                                .setId("language")
+                                .setType(Question.QuestionType.OPTIONS)
+                                .setLabel("Preferred tour language")
+                                .setRequired(true)
+                                .addOptions("English")
+                                .addOptions("Spanish")
+                                .addOptions("German")
+                )
+                // questions asked for each passenger; answers arrive in Passenger::answers
+                .addQuestionsPerPassenger(
+                        Question.newBuilder()
+                                .setId("age")
+                                .setType(Question.QuestionType.INT)
+                                .setLabel("Age")
+                                .setRequired(true)
+                )
+                .addQuestionsPerPassenger(
+                        Question.newBuilder()
+                                .setId("dob")
+                                .setType(Question.QuestionType.DATE)
+                                .setLabel("Date of birth")
+                )
+                .addQuestionsPerPassenger(
+                        Question.newBuilder()
+                                .setId("weight")
+                                .setType(Question.QuestionType.DOUBLE)
+                                .setLabel("Weight (kg)")
+                )
+                .addQuestionsPerPassenger(
+                        Question.newBuilder()
+                                .setId("wheelchair")
+                                .setType(Question.QuestionType.BOOLEAN)
+                                .setLabel("Do you need wheelchair access?")
+                )
                 .setTicketType(TicketType.QR_CODE)
                 .setMeetingType(MeetingType.MEET_ON_LOCATION)
                 .setDropoffAvailable(false)
@@ -225,41 +275,18 @@ public class SampleGrpcPlugin extends PluginApiGrpc.PluginApiImplBase {
     }
 
     /**
-     * A set of product ids provided, return their availability over given date range.
-     * This will return a subset of product IDs passed on via ProductAvailabilityRequest.
-     * Note: even though request contains capacity and date range, for a matching product it is enough to have availabilities for *some* dates over
-     * requested period. Subsequent GetProductAvailability request will clarify precise dates and capacities.
-     */
-    @Override
-    public void getAvailableProducts(ProductsAvailabilityRequest request, StreamObserver<ProductsAvailabilityResponse> responseObserver) {
-        log.trace("In ::getAvailableProducts");
-
-        // At this point you might want to call your external system to do the actual get and return data back.
-        // Code below just provides some mocks.
-
-        responseObserver.onNext(
-                ProductsAvailabilityResponse.newBuilder()
-                        .setProductId("123")
-                        .setActualCheckDone(false)
-                        .build()
-        );
-        responseObserver.onCompleted();
-        log.trace("Out ::getAvailableProducts");
-    }
-
-    /**
-     * Get availability of a particular product over a date range. This request should follow GetAvailableProducts and provide more details on
-     * precise dates/times for each product as well as capacity for each date. This call, however, is for a single product only (as opposed to
-     * {@link #getAvailableProducts(ProductsAvailabilityRequest, StreamObserver)}) which checks many products but only does a basic shallow check.
+     * Get availability of a particular product over a date range. This should provide details on precise dates/times as well as capacity for
+     * each date.
      */
     @Override
     public void getProductAvailability(ProductAvailabilityRequest request, StreamObserver<ProductAvailabilityWithRatesResponse> responseObserver) {
         log.trace("In ::getProductAvailability");
+        log.trace("Seller (vendor id) asking for availability: {}", request.getSellerId());
 
         // At this point you might want to call your external system to do the actual get and return data back.
         // Code below just provides some mocks.
 
-        LocalDate tomorrow = LocalDate.now().plusDays(1L);
+        var tomorrow = LocalDate.now().plusDays(1L);
         responseObserver.onNext(
                 ProductAvailabilityWithRatesResponse.newBuilder()
                         .setCapacity(10)
@@ -320,6 +347,7 @@ public class SampleGrpcPlugin extends PluginApiGrpc.PluginApiImplBase {
         // At this point you might want to call your external system to do the actual reservation and return data back.
         // Code below just provides some mocks.
 
+        processAnswers(request.getReservationData());
         responseObserver.onNext(
                 ReservationResponse.newBuilder()
                         .setSuccessfulReservation(
@@ -347,7 +375,8 @@ public class SampleGrpcPlugin extends PluginApiGrpc.PluginApiImplBase {
         // Code below just provides some mocks.
 
         processBookingSourceInfo(request.getReservationData().getBookingSource());
-        String confirmationCode = UUID.randomUUID().toString();
+        processAnswers(request.getReservationData());
+        var confirmationCode = UUID.randomUUID().toString();
         responseObserver.onNext(
                 ConfirmBookingResponse.newBuilder()
                         .setSuccessfulBooking(
@@ -401,6 +430,50 @@ public class SampleGrpcPlugin extends PluginApiGrpc.PluginApiImplBase {
                         bookingSource.getExtranetUser().getFullName());
                 break;
         }
+    }
+
+    /**
+     * Example code to read answers to the questions of the product (see ProductDescription::questionsPerBooking and ::questionsPerPassenger in
+     * {@link #getProductById(GetProductByIdRequest, StreamObserver)}). Question ids are the ones returned by this plugin.
+     * Only the questions which the vendor mapped to Bokun questions are answered, and an optional question might be left unanswered: answers
+     * which are missing are simply not sent.
+     * @param reservationData reservation data structure that is provided in reservation and booking requests
+     */
+    void processAnswers(ReservationData reservationData) {
+        for (var answer : reservationData.getAnswersList()) {
+            log.trace("Booking answer: {} = {}", answer.getQuestionId(), answerToString(answer));
+        }
+        for (var reservation : reservationData.getReservationsList()) {
+            for (var passenger : reservation.getPassengersList()) {
+                for (var answer : passenger.getAnswersList()) {
+                    log.trace("Passenger ({} {}) answer: {} = {}", passenger.getContact().getFirstName(), passenger.getContact().getLastName(),
+                            answer.getQuestionId(), answerToString(answer));
+                }
+            }
+        }
+    }
+
+    /**
+     * Exactly one of the *Answer fields is set, depending on the type of the question.
+     */
+    private static String answerToString(Answer answer) {
+        return switch (answer.getAnswerCase()) {
+            case TEXTANSWER -> answer.getTextAnswer();                                      // TEXT
+            case INTANSWER -> String.valueOf(answer.getIntAnswer());                        // INT
+            case DOUBLEANSWER -> String.valueOf(answer.getDoubleAnswer());                  // DOUBLE
+            case BOOLEANANSWER -> String.valueOf(answer.getBooleanAnswer());                // BOOLEAN
+            case DATEANSWER -> toLocalDate(answer.getDateAnswer()).toString();              // DATE
+            case DATEANDTIMEANSWER -> LocalDateTime.of(                                     // DATE_AND_TIME
+                    toLocalDate(answer.getDateAndTimeAnswer().getDate()),
+                    LocalTime.of(answer.getDateAndTimeAnswer().getTime().getHour(), answer.getDateAndTimeAnswer().getTime().getMinute())
+            ).toString();
+            case OPTIONSANSWERS -> String.join(", ", answer.getOptionsAnswers().getValuesList());     // OPTIONS
+            case ANSWER_NOT_SET -> "";
+        };
+    }
+
+    private static LocalDate toLocalDate(Date date) {
+        return LocalDate.of(date.getYear(), date.getMonth(), date.getDay());
     }
 
     /**
@@ -463,7 +536,8 @@ public class SampleGrpcPlugin extends PluginApiGrpc.PluginApiImplBase {
         // Code below just provides some mocks.
 
         processBookingSourceInfo(request.getReservationData().getBookingSource());
-        String confirmationCode = UUID.randomUUID().toString();
+        processAnswers(request.getReservationData());
+        var confirmationCode = UUID.randomUUID().toString();
         responseObserver.onNext(
                 AmendBookingResponse.newBuilder()
                         .setSuccessfulAmendment(

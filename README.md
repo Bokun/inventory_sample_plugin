@@ -6,4 +6,4 @@ Please [read the documentation](https://bokun.dev/implementing-inventory-service
 
 This project includes necessary dependencies for grpc-generated API skeleton objects and gives a general impression on how we implement those plugins ourselves.
 
-Requires Java 8.
+Requires Java 25. Run with `./gradlew run --args="-rest"` (or `-grpc`), setting `SAMPLE_PLUGIN_PORT` environment variable to the port to listen on.

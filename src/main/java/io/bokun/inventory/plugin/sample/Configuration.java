@@ -1,7 +1,5 @@
 package io.bokun.inventory.plugin.sample;
 
-import io.bokun.inventory.common.api.grpc.*;
-
 /**
  * Holder of configuration parameter values.
  */
@@ -33,16 +31,16 @@ public final class Configuration {
     }
 
     public static Configuration fromGrpcParameters(Iterable<io.bokun.inventory.common.api.grpc.PluginConfigurationParameterValue> configParameters) {
-        Configuration configuration = new Configuration();
-        for (PluginConfigurationParameterValue parameterValue : configParameters) {
+        var configuration = new Configuration();
+        for (var parameterValue : configParameters) {
             setParameterValue(parameterValue.getName(), parameterValue.getValue(), configuration);
         }
         return configuration;
     }
 
     public static Configuration fromRestParameters(Iterable<io.bokun.inventory.plugin.api.rest.PluginConfigurationParameterValue> configParameters) {
-        Configuration configuration = new Configuration();
-        for (io.bokun.inventory.plugin.api.rest.PluginConfigurationParameterValue parameterValue : configParameters) {
+        var configuration = new Configuration();
+        for (var parameterValue : configParameters) {
             setParameterValue(parameterValue.getName(), parameterValue.getValue(), configuration);
         }
         return configuration;
